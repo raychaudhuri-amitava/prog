@@ -1,0 +1,39 @@
+Index: src/predict/online/sections/ConstantArray.hpp
+===================================================================
+--- src/predict/online/sections/ConstantArray.hpp	(revision 56548)
++++ src/predict/online/sections/ConstantArray.hpp	(working copy)
+@@ -11,7 +11,7 @@
+ #include "Section.hpp"
+ 
+ template<typename CONSTTYPE>
+-class ConstantArray : public Section {
++class ConstantArray : public Section<ConstantArray<CONSTTYPE> > {
+ 
+     private:
+     typedef typename CONSTTYPE::constant_trait_type ElementTrait;
+@@ -21,16 +21,20 @@
+     typedef CommonSizeHeader::type Header;
+ 
+     public:
+-    explicit ConstantArray(IdArrayConstPtr ptr, CommonSectionHeaderRef hdr) : Section(ptr, hdr),
++    explicit ConstantArray(IdArrayConstPtr ptr, CommonSectionHeaderRef hdr) : Section<ConstantArray>(ptr, hdr),
+              fSize(NULL) {}
+ 
+-    virtual bool load(MemBlockType &mem, size_t &tillRead);
++    bool load(MemBlockType &mem, size_t &tillRead);
+ 
+-    virtual bool getValue(int32_t consType,
+-                          double& value) const;
++    bool getValue(int32_t consType,
++                  double& value) const;
+ 
+-    virtual void dump(std::ostream& out, bool isDumpHeader) const ;
++    void dump(std::ostream& out, bool isDumpHeader) const ;
+ 
++    protected:
++    using Section<ConstantArray<CONSTTYPE> >::fCache;
++    using Section<ConstantArray<CONSTTYPE> >::fType;
++
+     private:
+     Container fContainer;
+     Header* fSize;

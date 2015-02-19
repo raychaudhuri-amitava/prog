@@ -1,0 +1,16 @@
+Index: src/predict/online/configs/PredictorSpec.hpp
+===================================================================
+--- src/predict/online/configs/PredictorSpec.hpp	(revision 56548)
++++ src/predict/online/configs/PredictorSpec.hpp	(working copy)
+@@ -30,8 +30,10 @@
+ 
+     bool isSectionMandatory(int32_t stype, int32_t sbtype) const;
+ 
+-    PredictorSpec& operator()(int32_t type, int32_t subtype, bool isOptional = false);
++    bool isSectionSepBlock(int32_t stype, int32_t sbtype) const;
+ 
++    PredictorSpec& operator()(int32_t type, int32_t subtype, bool sepBlock = false, bool isOptional = false);
++
+     PredictorSpec& setSpec();
+ 
+     void VbtConfig(vbt_config const& vbt);

@@ -1,0 +1,187 @@
+Index: src/predict/online/predictors/CTPredictor.cpp
+===================================================================
+--- src/predict/online/predictors/CTPredictor.cpp	(revision 56548)
++++ src/predict/online/predictors/CTPredictor.cpp	(working copy)
+@@ -2,44 +2,46 @@
+ /* vi: set expandtab shiftwidth=4 tabstop=4: */
+ 
+ #include "CTPredictor.hpp"
++#include "predict/online/common/SectionDefHdr.hpp"
+ 
+ #include "traffic/objects/rm_string.hpp"
+ #include "predict/online/sections/ConstantArray.hpp"
+ 
+-CTPredictor::CTPredictor(PredictConf const& conf, bool& iscreated) : Predictor(conf, iscreated),
++CTPredictor::CTPredictor(PredictConf const& conf, bool& iscreated) : Predictor<CTPredictor>(conf, iscreated),
+                                                     MAX_PROB(0.999999) ,MIN_PROB(0.0) {
+     fSpec.PredType(PredictorType(predictor::type::ONLYCT, predictor::version::P2));
++    bool sepBlock = conf.UseHash();
+     fSpec.setSpec()
+-            (section::type::CLICK, section::subtype::GLMM, true)
+-            (section::type::CLICK, section::subtype::EM, true)
+-            (section::type::CLICK, section::subtype::GLMMES, true)
++            (section::type::CLICK, section::subtype::GLMM, sepBlock, true)
++            (section::type::CLICK, section::subtype::EM, sepBlock, true)
++            (section::type::CLICK, section::subtype::GLMMES, sepBlock, true)
+             (section::type::CLICK, section::subtype::CT_CONSTANTS)
+-            (section::type::PCC, section::subtype::GLMM, true)
+-            (section::type::PCC, section::subtype::EM, true)
+-            (section::type::PCC, section::subtype::GLMMES, true)
++            (section::type::PCC, section::subtype::GLMM, sepBlock, true)
++            (section::type::PCC, section::subtype::EM, sepBlock, true)
++            (section::type::PCC, section::subtype::GLMMES, sepBlock, true)
+             (section::type::PCC, section::subtype::CT_CONSTANTS)
+-            (section::type::PVC, section::subtype::GLMM, true)
+-            (section::type::PVC, section::subtype::EM, true)
+-            (section::type::PVC, section::subtype::GLMMES, true)
++            (section::type::PVC, section::subtype::GLMM, sepBlock, true)
++            (section::type::PVC, section::subtype::EM, sepBlock, true)
++            (section::type::PVC, section::subtype::GLMMES, sepBlock, true)
+             (section::type::PVC, section::subtype::CT_CONSTANTS)
+             ;
+ }
+ 
+-CTPredictor::CTPredictor(PredictCache *cache) : Predictor(cache), 
++CTPredictor::CTPredictor(PredictCache *cache) : Predictor<CTPredictor>(cache),
+              MAX_PROB(0.999999) ,MIN_PROB(0.0) { //will be from dumper. VBT is not required.
+     fSpec.PredType(PredictorType(predictor::type::ONLYCT, predictor::version::P2));
+     fSpec.setSpec()
+-            (section::type::CLICK, section::subtype::GLMM, true)
+-            (section::type::CLICK, section::subtype::EM, true)
+-            (section::type::CLICK, section::subtype::GLMMES, true)
++            (section::type::CLICK, section::subtype::GLMM, false, true)
++            (section::type::CLICK, section::subtype::EM, false, true)
++            (section::type::CLICK, section::subtype::GLMMES, false, true)
+             (section::type::CLICK, section::subtype::CT_CONSTANTS)
+-            (section::type::PCC, section::subtype::GLMM, true)
+-            (section::type::PCC, section::subtype::EM, true)
+-            (section::type::PCC, section::subtype::GLMMES, true)
++            (section::type::PCC, section::subtype::GLMM, false, true)
++            (section::type::PCC, section::subtype::EM, false, true)
++            (section::type::PCC, section::subtype::GLMMES, false, true)
+             (section::type::PCC, section::subtype::CT_CONSTANTS)
+-            (section::type::PVC, section::subtype::GLMM, true)
+-            (section::type::PVC, section::subtype::EM, true)
+-            (section::type::PVC, section::subtype::GLMMES, true)
++            (section::type::PVC, section::subtype::GLMM, false, true)
++            (section::type::PVC, section::subtype::EM, false, true)
++            (section::type::PVC, section::subtype::GLMMES, false, true)
+             (section::type::PVC, section::subtype::CT_CONSTANTS)
+             ;
+ }
+@@ -54,10 +56,11 @@
+                    predict_undiscretized_key& ukey,
+                    ServerStats& stats, rm_string *detail) const {
+     (void)detail;
+-    PredictScopedReadLock lock(fCacheLock);
+ 
+-    SectionPtr constants = fCache->getSection(section::type::CLICK, section::subtype::CT_CONSTANTS, 0);
++    key[PUBCLASS] = getPubclass(key[PEARL_ID]);
+ 
++    Section<ConstantArray<predict::CTConstantArrayType> >* constants = ((fCache->fSections)[section::type::CLICK][section::subtype::CT_CONSTANTS]).sub_secs[0];
++
+     double baseprob = getGLMMBaselineProb(section::type::CLICK,
+                                           key, ukey,
+                                           constants, 
+@@ -94,13 +97,13 @@
+     double click_prob = 1.0;
+     if(is_post_view){
+         type =  section::type::PVC;
++        key[PUBCLASS] = getPubclass(key[PEARL_ID]);
+     } else {
+         type = section::type::PCC;
+         click_prob = getClickProb(key, ukey,
+                 stats, detail);
+     }
+-    PredictScopedReadLock lock(fCacheLock);
+-    SectionPtr constants = fCache->getSection(type, section::subtype::CT_CONSTANTS, 0);
++    Section<ConstantArray<predict::CTConstantArrayType> >* constants = ((fCache->fSections)[type][section::subtype::CT_CONSTANTS]).sub_secs[0];
+ 
+     double baseprob = getGLMMBaselineProb(type,key, ukey,
+                                           constants,
+@@ -121,20 +124,26 @@
+ 
+ double CTPredictor::getGLMMBaselineProb(int32_t type, predict_key& key,
+                            predict_undiscretized_key& ukey,
+-                           SectionPtr ctConst,
++                           Section<ConstantArray<predict::CTConstantArrayType> >* ctConst,
+                            ServerStats& stats, rm_string *detail) const {
+ 
+     double baseline_prob = 0.0;
+ 
+-    SubSecTypeVecPtrRef sections = fCache->getSection(type,
+-                                    section::subtype::GLMM);
++    SubSecTypeVecRef sections = (fCache->fSections)[type][section::subtype::GLMM];
+ 
+-    if(sections) {
+-        uint64_t siz = sections->size();
+-        for(uint64_t i = 0; i < siz; ++i) {
++    if(sections.no_subsecs > 0) {
++        for(uint64_t i = 0; i < sections.no_subsecs; ++i) {
+             double dmy_prob = 0.0;
+-            if(((*(sections))[i])->getValue(key, ukey, dmy_prob, stats, detail)) {
+-                baseline_prob += dmy_prob;
++            if(fSpec.UseHash()){
++                Section<CTSection<false> > *sec = (sections.sub_secs)[i];
++                if(sec->getValue(key, ukey, dmy_prob, stats, detail)) {
++                    baseline_prob += dmy_prob;
++                }
++            } else {
++                Section<CTSection<true> > *sec = (sections.sub_secs)[i];
++                if(sec->getValue(key, ukey, dmy_prob, stats, detail)) {
++                    baseline_prob += dmy_prob;
++                }
+             }
+         }
+     }
+@@ -154,24 +163,39 @@
+ double CTPredictor::getEMCorrectedProb(int32_t type, predict_key& key,
+                           predict_undiscretized_key& ukey,
+                           double baseprob,
+-                          SectionPtr ctConst,
++                          Section<ConstantArray<predict::CTConstantArrayType> >* ctConst,
+                           ServerStats& stats, rm_string *detail) const {
+-    SubSecTypeVecPtrRef sections = fCache->getSection(type, section::subtype::EM);
++    SubSecTypeVecRef sections = (fCache->fSections)[type][section::subtype::EM];
+     double correction = 1.0;
+-    if(sections) {
+-        uint64_t siz = sections->size();
+-        for(uint64_t i = 0; i < siz; i++) {
++    if(sections.no_subsecs > 0) {
++        for(uint64_t i = 0; i < sections.no_subsecs; i++) {
+             double dmy_prob = 1.0;
+-            if(((*(sections))[i])->getValue(key, ukey, dmy_prob, stats, detail)) {
+-                correction *= dmy_prob;
++            if(fSpec.UseHash()){
++                Section<CTSection<false> > *sec = (sections.sub_secs)[i];
++                if(sec->getValue(key, ukey, dmy_prob, stats, detail)) {
++                    correction *= dmy_prob;
++                }
++            } else {
++                Section<CTSection<true> > *sec = (sections.sub_secs)[i];
++                if(sec->getValue(key, ukey, dmy_prob, stats, detail)) {
++                    correction *= dmy_prob;
++                }
+             }
+         }
+     }
+     double baseline_tries = 1.0;
+-    SubSecTypeVecPtrRef bstr_sections = fCache->getSection(type, section::subtype::GLMMES);
+-    if(bstr_sections) {
+-        if(!(((*(bstr_sections))[0])->getValue(key, ukey, baseline_tries, stats, detail))) {
+-            baseline_tries = 1.0;
++    SubSecTypeVecRef bstr_sections = (fCache->fSections)[type][section::subtype::GLMMES];
++    if(bstr_sections.no_subsecs > 0) {
++        if(fSpec.UseHash()){
++            Section<CTSection<false> > *sec = (sections.sub_secs)[i];
++            if(!sec->getValue(key, ukey, baseline_tries, stats, detail)) {
++                baseline_tries = 1.0;
++            }
++        } else {
++            Section<CTSection<true> > *sec = (sections.sub_secs)[i];
++            if(!sec->getValue(key, ukey, baseline_tries, stats, detail)) {
++                baseline_tries = 1.0;
++            }
+         }
+     }
+     double prob = baseprob*correction;

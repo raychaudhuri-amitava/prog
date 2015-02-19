@@ -1,0 +1,47 @@
+Index: src/predict/online/sections/DTOptimizedTree.hpp
+===================================================================
+--- src/predict/online/sections/DTOptimizedTree.hpp	(revision 56548)
++++ src/predict/online/sections/DTOptimizedTree.hpp	(working copy)
+@@ -21,29 +21,33 @@
+ #include "predict/online/common/Comparators.hpp"
+ 
+ template<class ELEMENT>
+-class DTOptimizedTree : public Section {
++class DTOptimizedTree : public Section<DTOptimizedTree<ELEMENT> > {
+ 
+     private:
+     typedef typename ELEMENT::element_type act_element;
+ 
+     public:
+     explicit DTOptimizedTree(IdArrayConstPtr ptr, CommonSectionHeaderRef hdr) : 
+-                             Section(ptr, hdr), fHeader(NULL),
++                             Section<DTOptimizedTree<ELEMENT> >(ptr, hdr), fHeader(NULL),
+                              fLvlOffset(NULL), fContainer(NULL),
+                              fDefaultNodeKey(0x7fffffffffffffffLL) {}
+ 
+-    virtual bool load(MemBlockType &mem, size_t &tillRead);
++    bool load(MemBlockType &mem, size_t &tillRead);
+ 
+     // double is for probability and learning probability
+-    virtual bool getValue(predict_key& key,
+-                          double& value,
+-                          ServerStats& stats,
+-                          rm_string *detail) const;
++    bool getValue(predict_key& key,
++                  double& value,
++                  ServerStats& stats,
++                  rm_string *detail) const;
+ 
+-    virtual void dump(std::ostream& out, bool isDumpHeader) const;
++    void dump(std::ostream& out, bool isDumpHeader) const;
+ 
+-    virtual ~DTOptimizedTree() {}
++    ~DTOptimizedTree() {}
+ 
++    protected:
++    using Section<DTOptimizedTree<ELEMENT> >::fCache;
++    using Section<DTOptimizedTree<ELEMENT> >::fType;
++
+     private:
+ 
+     void dumpHeader(std::ostream& out) const;

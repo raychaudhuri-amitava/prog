@@ -1,0 +1,22 @@
+Index: src/predict/online/sections/ThrottleCacheVbt.ipp
+===================================================================
+--- src/predict/online/sections/ThrottleCacheVbt.ipp	(revision 56548)
++++ src/predict/online/sections/ThrottleCacheVbt.ipp	(working copy)
+@@ -81,7 +81,7 @@
+         currentNode = &(*child);
+     }
+ 
+-    IdArrayConstPtr idarr = fCache.getIdArray();
++    IdArrayConstPtr idarr = fCache.fIDArr;
+     double multiplier = fCache.VbtConfig().getMult(fType.sec_type);
+     for (; i < fMaxKeys; ++i) {
+         data.key = key[fKeyPos[i]];
+@@ -189,7 +189,7 @@
+         currentNode = &(*child);
+     }
+ 
+-    IdArrayConstPtr idarr = fCache.getIdArray();
++    IdArrayConstPtr idarr = fCache.fIDArr;
+     double multiplier = fCache.VbtConfig().getMult(fType.sec_type);
+     //
+     // Insert the remaining layers in the budget tree.

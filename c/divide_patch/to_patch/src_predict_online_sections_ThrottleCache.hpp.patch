@@ -1,0 +1,55 @@
+Index: src/predict/online/sections/ThrottleCache.hpp
+===================================================================
+--- src/predict/online/sections/ThrottleCache.hpp	(revision 56548)
++++ src/predict/online/sections/ThrottleCache.hpp	(working copy)
+@@ -16,28 +16,28 @@
+ #include "predict/online/common/ThrottleCommonHeader.hpp"
+ 
+ template<class MEMPOOL>
+-class ThrottleCache : public Section {
++class ThrottleCache : public Section<ThrottleCache<MEMPOOL> > {
+ 
+     public:
+     explicit ThrottleCache(IdArrayConstPtr ptr, CommonSectionHeaderRef hdr);
+ 
+-    virtual bool load(MemBlockType &mem, size_t &tillRead);
++    bool load(MemBlockType &mem, size_t &tillRead);
+ 
+     // bool is for whether to throttle or not.
+-    virtual bool getValue(predict_key& key,
+-            bool& value, float prob,
+-            ServerStats& stats, rm_string *detail) const;
++    bool getValue(predict_key& key,
++         bool& value, float prob,
++         ServerStats& stats, rm_string *detail) const;
+ 
+     // This will be used by throttle section.
+-    virtual bool registerImpression(predict_key& key,
+-            double amount, float prob,
+-            ServerStats& stats);
++    bool registerImpression(predict_key& key,
++         double amount, float prob,
++         ServerStats& stats);
+ 
+-    virtual void dump(std::ostream& out, bool isDumpHeader) const;
++    void dump(std::ostream& out, bool isDumpHeader) const;
+ 
+-    virtual void reset();
++    void reset();
+ 
+-    virtual ~ThrottleCache();
++    ~ThrottleCache();
+ 
+     private:
+ 
+@@ -64,6 +64,10 @@
+             uint64_t level, uint64_t& first, uint64_t& last) const;
+ 
+     protected:
++    using Section<ThrottleCache<MEMPOOL> >::fCache;
++    using Section<ThrottleCache<MEMPOOL> >::fType;
++
++    protected:
+     throttle_cache_hdr* fHeader;
+     int32_t fMaxKeys;
+     size_t* fKeyPos;

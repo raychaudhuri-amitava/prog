@@ -1,0 +1,31 @@
+Index: src/predict/online/sections/DTOptimizedTree.ipp
+===================================================================
+--- src/predict/online/sections/DTOptimizedTree.ipp	(revision 56549)
++++ src/predict/online/sections/DTOptimizedTree.ipp	(working copy)
+@@ -30,7 +30,7 @@
+     (void) detail;                          
+     value = 0.0;
+     search_element skey;
+-    IdArrayConstPtr tIDArray = fCache.getIdArray();
++    IdArrayConstPtr tIDArray = fCache.fIDArr;
+     int32_t i = 0;
+     int curr_node_level = 0;
+     const act_element* predict_node = fContainer;// boot-strapping the current node
+@@ -126,7 +126,7 @@
+     commonOutputNode(out, level, keys);
+     predict::EnumMapperBase* attr = predict::MapperFactory::getMapper<predict::AttrTypeTrait>();
+     if(level > 0) {
+-        out<<attr->idToName(keys.back().first)<<"="<<fCache.getIdArray()[el.fkey()]<<" ";
++        out<<attr->idToName(keys.back().first)<<"="<<fCache.fIDArr[el.fkey()]<<" ";
+     }
+     else {
+         out<<" ";
+@@ -146,7 +146,7 @@
+     }
+     predict::EnumMapperBase* attr = predict::MapperFactory::getMapper<predict::AttrTypeTrait>();
+     for (int32_t i = 0; i < ((int32_t)keys.size() - 1); ++i) {
+-        out<<attr->idToName(keys[i].first)<<"="<<fCache.getIdArray()[keys[i + 1].second]<<">";
++        out<<attr->idToName(keys[i].first)<<"="<<fCache.fIDArr[keys[i + 1].second]<<">";
+     }
+ }
+ 

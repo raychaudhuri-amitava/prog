@@ -1,0 +1,69 @@
+Index: src/predict/online/sections/CTSection.hpp
+===================================================================
+--- src/predict/online/sections/CTSection.hpp	(revision 56548)
++++ src/predict/online/sections/CTSection.hpp	(working copy)
+@@ -15,7 +15,7 @@
+ //ALTFLAG is true when we use the section as sorted array. This is refered as alternate section.
+ //ALTFLAG is false when we use the section as hash map.
+ template<bool ALTFLAG>
+-class CTSection : public Section {
++class CTSection : public Section<CTSection<ALTFLAG> > {
+ 
+     private:
+ 
+@@ -33,32 +33,37 @@
+ 
+ 
+     public:
+-    explicit CTSection(IdArrayConstPtr ptr, CommonSectionHeaderRef hdr) : Section(ptr, hdr), fUseAltSection(ALTFLAG){}
++    explicit CTSection(IdArrayConstPtr ptr, CommonSectionHeaderRef hdr) :
++                      Section<CTSection<ALTFLAG> >(ptr, hdr), fUseAltSection(ALTFLAG){}
+ 
+-    virtual bool load(MemBlockType &mem, size_t &tillRead);
++    bool load(MemBlockType &mem, size_t &tillRead);
+ 
+     // double is for probability
+-    virtual bool getValue(predict_key& key,
+-                          predict_undiscretized_key& ukey,
+-                          double& value,
+-                          ServerStats& stats,
+-                          rm_string *detail) const;
++    bool getValue(predict_key& key,
++                  predict_undiscretized_key& ukey,
++                  double& value,
++                  ServerStats& stats,
++                  rm_string *detail) const;
+ 
+-    virtual bool getValue(predict_key& key,
+-                          double& value,
+-                          ServerStats& stats,
+-                          rm_string *detail) const;
++    bool getValue(predict_key& key,
++                  double& value,
++                  ServerStats& stats,
++                  rm_string *detail) const;
+ 
+     //Get Modifier for external world.
+-    virtual bool getValue(predict_key& key,
+-                          double& value,
+-                          size_t *keypos,
+-                          size_t nkys,
+-                          ServerStats& stats,
+-                          rm_string *detail) const;
++    bool getValue(predict_key& key,
++                  double& value,
++                  size_t *keypos,
++                  size_t nkys,
++                  ServerStats& stats,
++                  rm_string *detail) const;
+ 
+-    virtual void dump(std::ostream& out, bool isDumpHeader) const;
++    void dump(std::ostream& out, bool isDumpHeader) const;
+ 
++    protected:
++    using Section<CTSection<ALTFLAG> >::fCache;
++    using Section<CTSection<ALTFLAG> >::fType;
++
+     private:
+ 
+     bool loadMe(MemBlockType::element_type* variablePart, size_t &tillRead);

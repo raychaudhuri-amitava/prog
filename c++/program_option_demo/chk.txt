@@ -1,0 +1,74 @@
+key = clean-dir-level.name is unreg = 1  pos = -1
+Value = ctSection
+key = parent-dir.name is unreg = 1  pos = -1
+Value = ctSection
+key = section-list.section-name is unreg = 1  pos = -1
+Value = CLICK
+key = sub-section-name.section-name is unreg = 0  pos = -1
+Value = CLICK
+key = sub-section-name.subsection-name is unreg = 0  pos = -1
+Value = MODIFIER
+key = sub-section-name.subsection-type is unreg = 0  pos = -1
+Value = SINGLE_SELECTION
+key = sub-section-name.value_type is unreg = 0  pos = -1
+Value = double
+key = sub-section-name.data_structure_type is unreg = 0  pos = -1
+Value = map
+key = sub-section-name.val_start is unreg = 0  pos = -1
+Value = 5.7178
+key = sub-section-name.val_incr is unreg = 0  pos = -1
+Value = 0.012
+key = sub-section-name.key_start is unreg = 0  pos = -1
+Value = 1,2,3,4
+key = sub-section-name.key_end is unreg = 0  pos = -1
+Value = 5,6,7,8
+key = sub-section-name.key_incr is unreg = 0  pos = -1
+Value = 1,1,1,1
+key = sub-section-name.key-sep is unreg = 0  pos = -1
+Value = T
+key = sub-section-name.val-sep is unreg = 0  pos = -1
+Value = T
+key = config-options.keys is unreg = 1  pos = -1
+Value = PEARL_ID,ADVERTISER_ID,CAMPAIGN_ID,CREATIVE_ID
+key = config-options.default_value is unreg = 1  pos = -1
+Value = 1.0
+key = config-options.max-ref-amount is unreg = 1  pos = -1
+Value = 10.0
+key = config-options.min-ref-amount is unreg = 1  pos = -1
+Value = 0.1
+key = config-options.min-click is unreg = 1  pos = -1
+Value = 0
+key = sub-section-name.section-name is unreg = 0  pos = -1
+Value = CLICK
+key = sub-section-name.subsection-name is unreg = 0  pos = -1
+Value = MODIFIER
+key = sub-section-name.subsection-type is unreg = 0  pos = -1
+Value = SINGLE_SELECTION
+key = sub-section-name.value_type is unreg = 0  pos = -1
+Value = double
+key = sub-section-name.data_structure_type is unreg = 0  pos = -1
+Value = map
+key = sub-section-name.val_start is unreg = 0  pos = -1
+Value = 7.281
+key = sub-section-name.val_incr is unreg = 0  pos = -1
+Value = 0.081
+key = sub-section-name.key_start is unreg = 0  pos = -1
+Value = 1,2,3,4
+key = sub-section-name.key_end is unreg = 0  pos = -1
+Value = 5,6,7,8
+key = sub-section-name.key_incr is unreg = 0  pos = -1
+Value = 1,1,1,1
+key = sub-section-name.key-sep is unreg = 0  pos = -1
+Value = T
+key = sub-section-name.val-sep is unreg = 0  pos = -1
+Value = T
+key = config-options.keys is unreg = 1  pos = -1
+Value = PEARL_ID,ADVERTISER_ID,CAMPAIGN_ID,CREATIVE_ID
+key = config-options.default_value is unreg = 1  pos = -1
+Value = 1.0
+key = config-options.max-ref-amount is unreg = 1  pos = -1
+Value = 20.0
+key = config-options.min-ref-amount is unreg = 1  pos = -1
+Value = 1.1
+key = config-options.min-click is unreg = 1  pos = -1
+Value = 0

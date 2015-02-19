@@ -1,0 +1,30 @@
+Index: src/predict/online/cachegenerators/CacheGenerator.hpp
+===================================================================
+--- src/predict/online/cachegenerators/CacheGenerator.hpp	(revision 56548)
++++ src/predict/online/cachegenerators/CacheGenerator.hpp	(working copy)
+@@ -44,6 +44,7 @@
+ #include <boost/bind.hpp>
+ #include <rmas3rdpartythreadpool.h>
+ 
++#include "predict/online/common/GlobalHeader.hpp"
+ #include "predict/online/common/CommonPredictTypes.hpp"
+ #include "predict/online/common/PredictorTypes.hpp"
+ #include "predict/online/common/SectionTypes.hpp"
+@@ -107,7 +108,7 @@
+ 
+     bool loadAllSectionsInDir(string const& dirname, boost::threadpool::thread_pool<>& threads);
+ 
+-    void transformAllSections(SectionWriterContainer<section::type::MAX_TYPES>::type const& allsections);
++    void transformAllSections();
+ 
+     bool firstParseAll();
+ 
+@@ -121,6 +122,8 @@
+ 
+     private:
+     PredictorType fPredType;
++    CacheIndex fIndex;
++    CacheIndex fSIndex;
+     IdArrayType fIdArray;
+     IdMapType fIdMap;
+     uint32_t fNumSecs;

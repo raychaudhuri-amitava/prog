@@ -1,0 +1,6 @@
+./gather_stats.sh 10000000 1000000000 1000000
+
+Start = 10^7 = 10 million
+End = 10^9 = 1000 million = 1 billion
+Step = 10^6 = 1 million
+

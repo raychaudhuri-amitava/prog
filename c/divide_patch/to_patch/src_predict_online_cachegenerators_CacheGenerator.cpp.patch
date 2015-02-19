@@ -1,0 +1,82 @@
+Index: src/predict/online/cachegenerators/CacheGenerator.cpp
+===================================================================
+--- src/predict/online/cachegenerators/CacheGenerator.cpp	(revision 56548)
++++ src/predict/online/cachegenerators/CacheGenerator.cpp	(working copy)
+@@ -38,7 +38,7 @@
+     
+     loadIdMap();
+ 
+-    transformAllSections(fSections);
++    transformAllSections();
+     firstParseAll();
+     if(!out.open(CacheGenConf::getOutputFile(), fCacheSize)) {
+         throw std::ios::failure("Can't write to the output cache file : " + CacheGenConf::getOutputFile());
+@@ -59,6 +59,7 @@
+     gbh.num_sections = fNumSecs;
+     gbh.cache_bsize = fCacheSize;
+     gbh.id_array_size = fIdArray.size()*sizeof(IdArrayType::value_type);
++    gbh.cache_index_size = fIndex.size()*sizeof(CacheIndexElement);
+     const po::variables_map& vm = CacheGenConf::getVariableMap();
+     string predict_str = vm["predict-cache-version-string"].as<string>();
+     sprintf(gbh.cache_version_string,"%s Gen time: %s",predict_str.c_str(), TimeUtils::toSql(time(NULL)).c_str());
+@@ -66,14 +67,19 @@
+     if(CacheGenConf::withServiceCache()) {
+         gbh.cache_type = predictor::cachetype::SERVICE;
+         gbh.cache_bsize = fSCacheSize;
++        gbh.cache_index_size = fSIndex.size()*sizeof(CacheIndexElement);
+         predict::Utils::safe_write(sout, gbh, serv_off);
+     }
+-
++    predict::Utils::safe_write_vector(out, fIndex, off);
++    fIndex.clear();
++    if(CacheGenConf::withServiceCache()) {
++        predict::Utils::safe_write_vector(sout, fSIndex, serv_off);
++        fSIndex.clear();
++    }    
+     writeIdArray(out, off);
+     if(CacheGenConf::withServiceCache()) {
+         writeIdArray(sout, serv_off);
+     }
+-
+     fIdArray.clear(); //Now clear the set
+ 
+     writeAllSections(out, fSections, false); //Once all the normal sections are written we start the service sections.
+@@ -254,11 +260,11 @@
+     return true;
+ }
+ 
+-void CacheGenerator::transformAllSections(SectionWriterContainer<section::type::MAX_TYPES>::type const& allsections) {
++void CacheGenerator::transformAllSections() {
+     boost::threadpool::thread_pool<> threads(CacheGenConf::numThreads());
+     for(int32_t i = section::type::GEN; i < section::type::MAX_TYPES; ++i) {
+-        for(SectionSubtypeVec::const_iterator cit = allsections[i].begin();
+-                cit != allsections[i].end(); ++cit) {
++        for(SectionSubtypeVec::const_iterator cit = fSections[i].begin();
++                cit != fSections[i].end(); ++cit) {
+             if(*cit &&(!(*cit)->empty())) {
+                 for(SubSectionTypeVec::const_iterator csit = (*cit)->begin();
+                         csit != (*cit)->end(); ++csit) {
+@@ -288,13 +294,21 @@
+                     if(*csit) {
+                         fNumSecs++;
+                         (*csit)->lastOffset(fCacheSize, fSCacheSize);
+-                        fCacheSize += ((*csit)->byteSize(false));
+-                        fSCacheSize += ((*csit)->byteSize(true));
++                        size_t btsz = (*csit)->byteSize(false);                        
++                        fCacheSize += btsz;
++                        CacheIndexElement cie((*csit)->getSectionType(), btsz);
++                        fIndex.push_back(cie);
++                        btsz = (*csit)->byteSize(true);
++                        fSCacheSize += btsz;
++                        CacheIndexElement scie((*csit)->getSectionType(), btsz);                        
++                        fSIndex.push_back(scie);
+                     }
+                 }
+             }
+         }
+     }
++    fCacheSize += (sizeof(CacheIndexElement) * fIndex.size());
++    fSCacheSize += (sizeof(CacheIndexElement) * fSIndex.size());    
+     return true;
+ }
+ 

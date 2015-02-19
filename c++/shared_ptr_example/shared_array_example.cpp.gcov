@@ -1,0 +1,214 @@
+        -:    0:Source:shared_array_example.cpp
+        -:    0:Graph:shared_array_example.gcno
+        -:    0:Data:-
+        -:    0:Runs:0
+        -:    0:Programs:0
+        -:    1:#include <iostream>
+        -:    2:#include<stdlib.h>
+        -:    3:#include <boost/shared_ptr.hpp>
+        -:    4:#include <vector>
+        -:    5:#include <set>
+        -:    6:#include <iostream>
+        -:    7:#include <algorithm>
+        -:    8:
+        -:    9:
+        -:   10:using namespace std;
+        -:   11:using namespace boost;
+        -:   12:
+        -:   13:class aclass
+        -:   14:{
+        -:   15:	private:
+        -:   16:	int x;
+        -:   17:	public:
+        -:   18:	aclass()
+        -:   19:	{
+        -:   20:		x=0;
+        -:   21:		cout<<"In constructor"<<endl;
+        -:   22:	}
+    #####:   23:	aclass(int y)
+    #####:   24:	{
+    #####:   25:		x=y;
+    #####:   26:		cout<<"In constructor x = "<<x<<endl;
+    $$$$$:   26-block  0
+    #####:   27:	}
+    #####:   28:        virtual ~aclass()
+    #####:   29:	{
+    #####:   30:		cout<<"In destructor x = "<<x<<endl;
+    $$$$$:   30-block  0
+    $$$$$:   30-block  1
+    $$$$$:   30-block  2
+    #####:   31:	}
+    $$$$$:   31-block  0
+    $$$$$:   31-block  1
+    $$$$$:   31-block  2
+    $$$$$:   31-block  3
+    $$$$$:   31-block  4
+    $$$$$:   31-block  5
+    #####:   32:	virtual void setx(int x)
+        -:   33:	{
+    #####:   34:		this->x=x;
+    #####:   35:		cout<<"in setx with x = "<<this->x<<endl;
+    $$$$$:   35-block  0
+    #####:   36:	}
+        -:   37:};
+        -:   38:
+        -:   39:
+        -:   40:class bclass : aclass
+        -:   41:{
+        -:   42:	private:
+        -:   43:	int y;
+        -:   44:	public:
+    #####:   45:	bclass() : aclass(0),y(0)
+    $$$$$:   45-block  0
+        -:   46:	{
+    #####:   47:		cout<<"bclass: In constructor"<<endl;
+    #####:   48:	}
+    $$$$$:   48-block  0
+    $$$$$:   48-block  1
+    $$$$$:   48-block  2
+        -:   49:	bclass(int x,int z) : aclass(z),y(x)
+        -:   50:	{
+        -:   51:		cout<<"bclass: In constructor y = "<<y<<endl;
+        -:   52:	}
+    #####:   53:	~bclass()
+    #####:   54:	{
+    #####:   55:		cout<<"bclass: In destructor y = "<<y<<endl;
+    $$$$$:   55-block  0
+    $$$$$:   55-block  1
+    #####:   56:	}
+    $$$$$:   56-block  0
+    $$$$$:   56-block  1
+    $$$$$:   56-block  2
+    $$$$$:   56-block  3
+    $$$$$:   56-block  4
+    $$$$$:   56-block  5
+    $$$$$:   56-block  6
+    $$$$$:   56-block  7
+    $$$$$:   56-block  8
+    $$$$$:   56-block  9
+    #####:   57:	void setx(int y)
+        -:   58:	{
+    #####:   59:		this->y=y;
+    #####:   60:		cout<<"bclass: in setx with y = "<<this->y<<endl;
+    $$$$$:   60-block  0
+    #####:   61:	}
+        -:   62:	
+        -:   63:};
+        -:   64:
+        -:   65:
+        -:   66:class cclass : aclass
+        -:   67:{
+        -:   68:	private:
+        -:   69:	int y;
+        -:   70:	public:
+    #####:   71:	cclass() : aclass(0),y(0)
+    $$$$$:   71-block  0
+        -:   72:	{
+    #####:   73:		cout<<"cclass: In constructor"<<endl;
+    #####:   74:	}
+    $$$$$:   74-block  0
+    $$$$$:   74-block  1
+    $$$$$:   74-block  2
+        -:   75:	cclass(int x,int z) : aclass(z),y(x)
+        -:   76:	{
+        -:   77:		cout<<"cclass: In constructor y = "<<y<<endl;
+        -:   78:	}
+    #####:   79:	~cclass()
+    #####:   80:	{
+    #####:   81:		cout<<"cclass: In destructor y = "<<y<<endl;
+    $$$$$:   81-block  0
+    $$$$$:   81-block  1
+    #####:   82:	}
+    $$$$$:   82-block  0
+    $$$$$:   82-block  1
+    $$$$$:   82-block  2
+    $$$$$:   82-block  3
+    $$$$$:   82-block  4
+    $$$$$:   82-block  5
+    $$$$$:   82-block  6
+    $$$$$:   82-block  7
+    $$$$$:   82-block  8
+    $$$$$:   82-block  9
+    #####:   83:	void setx(int y)
+        -:   84:	{
+    #####:   85:		this->y=y;
+    #####:   86:		cout<<"cclass: in setx with y = "<<this->y<<endl;
+    $$$$$:   86-block  0
+    #####:   87:	}
+        -:   88:	
+        -:   89:};
+        -:   90:
+        -:   91:typedef shared_ptr<aclass> aclassPtr;
+        -:   92:typedef vector<aclassPtr> pool_t;
+        -:   93:
+    #####:   94:int main()
+        -:   95:{
+    #####:   96:  const int size = 10;
+        -:   97://  typedef boost::shared_array<aclass> aclassArray_t;
+    #####:   98:  pool_t aclassVect; 
+    $$$$$:   98-block  0
+    $$$$$:   98-block  1
+    $$$$$:   98-block  2
+        -:   99:
+    #####:  100:  int i=0;
+    #####:  101:  for(i=0;i<size;i++)
+    $$$$$:  101-block  0
+    $$$$$:  101-block  1
+        -:  102:  {
+    #####:  103:	  int a=rand()%2;
+    $$$$$:  103-block  0
+        -:  104:	  
+    #####:  105:	  if(a==0)
+        -:  106:	  {
+    #####:  107:		  cout<<"a = "<<a<<" so its bclass at i = "<<i<<endl;
+    $$$$$:  107-block  0
+    #####:  108:		  aclassPtr tempb((aclass *)(new bclass()));
+    $$$$$:  108-block  0
+    $$$$$:  108-block  1
+    #####:  109:		  aclassVect.push_back(tempb);
+    $$$$$:  109-block  0
+    $$$$$:  109-block  1
+    $$$$$:  109-block  2
+        -:  110:	  }
+        -:  111:	  else
+        -:  112:	  {
+    #####:  113:		  cout<<"a = "<<a<<" so its cclass at i = "<<i<<endl;
+    $$$$$:  113-block  0
+    #####:  114:		  aclassPtr tempc((aclass *)(new cclass()));
+    $$$$$:  114-block  0
+    $$$$$:  114-block  1
+    #####:  115:		  aclassVect.push_back(tempc);
+    $$$$$:  115-block  0
+    $$$$$:  115-block  1
+    $$$$$:  115-block  2
+        -:  116:	  }
+        -:  117:  }
+    #####:  118:  int j=0;
+    #####:  119:  for(pool_t::iterator r=aclassVect.begin();r!=aclassVect.end();r++ )
+    $$$$$:  119-block  0
+    $$$$$:  119-block  1
+        -:  120:  {
+        -:  121:	  //r->get()->setx(j);
+    #####:  122:	  (*r)->setx(j);
+    $$$$$:  122-block  0
+    #####:  123:	  j++;
+        -:  124:  }
+    #####:  125:  for(i=0;i<10;i++)
+    $$$$$:  125-block  0
+    $$$$$:  125-block  1
+        -:  126:  {
+    #####:  127:	  aclassVect[i]->setx(i);
+    $$$$$:  127-block  0
+    #####:  128:  }
+    $$$$$:  128-block  0
+    $$$$$:  128-block  1
+    $$$$$:  128-block  2
+    $$$$$:  128-block  3
+        -:  129:  //Do stuff with myArray
+        -:  130:  //Cool, no need to call delete[] yourself
+    #####:  131:}
+    $$$$$:  131-block  0
+    $$$$$:  131-block  1
+    $$$$$:  131-block  2
+    #####:  132:
+    $$$$$:  132-block  0

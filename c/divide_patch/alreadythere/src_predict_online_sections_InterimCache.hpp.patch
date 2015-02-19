@@ -1,0 +1,29 @@
+Index: src/predict/online/sections/InterimCache.hpp
+===================================================================
+--- src/predict/online/sections/InterimCache.hpp	(revision 56548)
++++ src/predict/online/sections/InterimCache.hpp	(working copy)
+@@ -17,9 +17,10 @@
+     InterimCache(InterimCache const& csh) : fIDArr(csh.fIDArr) ,
+             fCachePrefix(""){}
+ 
+-    IdArrayConstPtr getIdArray() const {
++/*    IdArrayConstPtr getIdArray() const {
+         return fIDArr;
+     }
++*/
+ 
+     const char* CachePrefix() const {
+         return fCachePrefix.c_str();
+@@ -46,9 +47,11 @@
+     InterimCache& operator=(InterimCache const&);
+ 
+     private:
+-    IdArrayConstPtr fIDArr;
+     string fCachePrefix;
+     vbt_config fVbt;
++
++    public:
++    IdArrayConstPtr fIDArr;
+ };
+ 
+ 

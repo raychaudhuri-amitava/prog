@@ -1,0 +1,199 @@
+Index: src/predict/online/predictcache/PredictCache.cpp
+===================================================================
+--- src/predict/online/predictcache/PredictCache.cpp	(revision 56548)
++++ src/predict/online/predictcache/PredictCache.cpp	(working copy)
+@@ -17,23 +17,27 @@
+ #include "predict/online/common/CommonConstant.hpp"
+ 
+ PredictCache::PredictCache() : fHeader(0),
+-                               fIdArray(0) {
++fCacheIndex(0), fTillReadUB(0), fIdArray(0) {
+     for(int32_t i = section::type::GEN; i < section::type::MAX_TYPES; ++i) {
+         if(i == section::type::GEN) {
+-            fSections[i].resize(section::gensubtype::MAX_GENSUBTYPES);
++            fSections[i] = new SubSecTypeVec[section::gensubtype::MAX_GENSUBTYPES];
++        } else {
++            fSections[i] = new SubSecTypeVec[section::subtype::MAX_SUBTYPES];
+         }
+-        else {
+-            fSections[i].resize(section::subtype::MAX_SUBTYPES);
+-        }
+     }
+ }
+ 
+ PredictCache::~PredictCache() {
+     delete fHeader;
+     fHeader = NULL;
+-    uint8_t* ptr = reinterpret_cast<uint8_t*>(fIdArray);
++    uint8_t* ptr = reinterpret_cast<uint8_t*>(fCacheIndex);
+     delete [] ptr;
+-    fIdArray = NULL;
++    ptr = NULL;
++    fCacheIndex= NULL;
++    for(int32_t i = section::type::GEN; i < section::type::MAX_TYPES; ++i) {
++        delete [] fSections[i];
++        fSections[i] = NULL;
++    }
+ }
+ 
+ bool PredictCache::load(PredictConf const& cnf, PredictorSpec const& spc) {
+@@ -75,6 +79,13 @@
+ 
+     size_t leftRead = fHeader->cache_bsize - sizeof(GlobalCacheHeader);
+ 
++    ret = ret && loadIndex(fd, cnf.ValidateSpec(), leftRead);
++
++    if((!ret) && (!no_more_errors)) {
++        util_error(LOG_ERR, "Predict Cache: Cache Index can't be loaded\n");
++        no_more_errors = true;
++    }
++
+     ret = ret && loadIdArray(fd, leftRead);
+     if((!ret) && (!no_more_errors)) {
+         util_error(LOG_ERR, "Predict Cache: Id Array can't be loaded\n");
+@@ -138,13 +149,37 @@
+     return true;
+ }
+ 
++bool PredictCache::loadIndex(int fd, bool validateSpec, size_t & left_read) {
++    if(left_read == 0) return true;
++    uint8_t* indx = new uint8_t[fHeader->cache_index_size];
++    ssize_t readSize = readall(fd, static_cast<void*>(indx), fHeader->cache_index_size);
++    left_read -= fHeader->cache_index_size;
++    if(readSize < 0) {
++        util_error(LOG_ERR, "Predict Cache: Error in reading cache index\n");
++        return false;
++    }
++    fCacheIndex = reinterpret_cast<CacheIndexPtr>(indx);
++    size_t idxsz = fHeader->cache_index_size / sizeof(CacheIndexElement);
++    size_t cacheSz = 0;
++    for(size_t i = 0; i < idxsz; ++i) {
++        if((!validateSpec) || (fSpec.isSectionValid(fCacheIndex[i].sec_type, fCacheIndex[i].sec_sub_type) &&
++           (!fSpec.isSectionSepBlock(fCacheIndex[i].sec_type, fCacheIndex[i].sec_sub_type)))) {
++            cacheSz += fCacheIndex[i].tot_sec_byte_size;
++        }
++    }
++    cacheSz += fHeader->id_array_size;
++    fMemory.reset(new uint8_t[cacheSz]);
++    return true;
++}
++
+ bool PredictCache::loadIdArray(int fd, size_t & left_read) {
+ 
+     if(left_read == 0) return true;
+ 
+-    uint8_t* idarr = new uint8_t[fHeader->id_array_size];
++    uint8_t* idarr = fMemory.get() + fTillReadUB;
+     ssize_t readSize = readall(fd, static_cast<void*>(idarr), fHeader->id_array_size);
+     left_read -= fHeader->id_array_size;
++    fTillReadUB += fHeader->id_array_size;
+     if(readSize < 0) {
+         util_error(LOG_ERR, "Predict Cache: Error in reading idarray\n");
+         return false;
+@@ -220,7 +255,6 @@
+             } else {
+                 toSkip = true;
+                 left_read -= (shdr->tot_sec_byte_size);
+-                fSections[shdr->sec_type][shdr->sec_sub_type] = SubSecTypeVecPtr(static_cast<SubSecTypeVec*>(NULL));
+             }
+ 
+             if(valSpec && (!ret)) {
+@@ -239,37 +273,51 @@
+ 
+ 
+ bool PredictCache::allocateWholeSection(int fd, CommonSectionHeaderPtr hdr,
+-        size_t & left_read, bool& toSkip, SubSecTypeVecPtrRef section) {
++        size_t & left_read, bool& toSkip, SubSecTypeVecRef section) {
+     size_t till_read = 0;
+     MemBlockType dummy_mem(NULL);
+     allocateSpecificSection(false, dummy_mem, hdr, toSkip, till_read);
+     if(toSkip) {
+         left_read -= (hdr->tot_sec_byte_size);
+     }else {
+-        SubSecTypeVec* vec = new SubSecTypeVec;
+-        (*vec).resize(hdr->no_subsec);
+-        MemBlockType mem(new uint8_t[hdr->tot_sec_byte_size]);
+-        ssize_t readSize = readall(fd, static_cast<void*>(mem.get()), hdr->tot_sec_byte_size); //using get here. no harm.
++        MemBlockType mem;
++        bool isSepB = fSpec.isSectionSepBlock(hdr->sec_type, hdr->sec_sub_type);
++        void *rdPtr = NULL;
++        if(isSepB){
++            mem.reset(new uint8_t[hdr->tot_sec_byte_size]);
++            rdPtr = static_cast<void*>(mem.get());
++            till_read = 0;
++        } else  {
++            rdPtr = static_cast<void*>(fMemory.get() + fTillReadUB);
++            till_read = fTillReadUB;
++        }
++        ssize_t readSize = readall(fd, rdPtr, hdr->tot_sec_byte_size); //using get here. no harm.
+         if(readSize <= 0) { // can't be EOF
+             util_error(LOG_ERR, "Predict Cache: Problem in reading a section. Some issue\n");
+             left_read -= (hdr->tot_sec_byte_size);
+             mem.reset();
+             return false; //empty vec.
+         }
+-        till_read = 0;
++        section.sub_secs = new SectionPtr[hdr->no_subsec];
++        section.no_subsecs = hdr->no_subsec;
+         bool toLoad = false;
+         for(size_t i = 0; i < hdr->no_subsec; ++i) {
+-            SectionPtr next_sec(allocateSpecificSection(true, mem, hdr, toLoad, till_read));
++            (section.sub_secs)[i] = NULL;
++            SectionPtr next_sec(allocateSpecificSection(true, isSepB ? mem : fMemory, hdr, toLoad, till_read));
+             if(toLoad){
+-                (*vec)[i] = next_sec;
++                (section.sub_secs)[i] = next_sec;
+             }else {
+                 util_error(LOG_ERR, "Predict Cache: Problem in loading a section. Some memory corruption. Please report.\n");
+                 break; //ignore further sections. and give an error.
+             }
+         }
+-        fMemory.push_back(mem);
++        if(fSpec.isSectionSepBlock(hdr->sec_type, hdr->sec_sub_type)) {
++            mem.reset();
++        } else {
++            fTillReadUB += (hdr->tot_sec_byte_size);
++        }
++
+         left_read -= (hdr->tot_sec_byte_size); // now update before returning.
+-        section.reset(vec);
+         return true;
+     }
+     return false; //empty vec.
+@@ -380,7 +428,7 @@
+     break;
+ 
+ 
+-Section* PredictCache::allocateSpecificSection(bool allocateMode, MemBlockType &mem, CommonSectionHeaderPtr hdr, 
++SectionPtr PredictCache::allocateSpecificSection(bool allocateMode, MemBlockType &mem, CommonSectionHeaderPtr hdr,
+         bool& toSkiptoLoad, size_t &tillRead) {
+     toSkiptoLoad = true; //assume that the section is not there.
+     bool tUseHash = fSpec.UseHash();
+@@ -477,20 +525,16 @@
+     }
+ 
+     for(int32_t i = section::type::GEN; i < section::type::MAX_TYPES; ++i) {
++        int32_t siz = 0;
+         if(i == section::type::GEN) {
+-            for(int32_t j = 0; j < section::gensubtype::MAX_GENSUBTYPES; ++j) {
+-                if((fSpec.isSectionMandatory(i,j)) && (!(fSections[i][j]))) {
+-                    return false;
+-                }
+-            }
++            siz = section::gensubtype::MAX_GENSUBTYPES;
++        } else {
++            siz = section::subtype::MAX_SUBTYPES;
+         }
+-        else {
+-            for(int32_t j = 0; j < section::subtype::MAX_SUBTYPES; ++j) {
+-                if((fSpec.isSectionMandatory(i,j)) && (!(fSections[i][j]))) {
+-                    return false;
+-                }
++        for(int32_t j = 0; j < siz; ++j) {
++            if((fSpec.isSectionMandatory(i,j)) && ((fSections[i][j]).no_subsecs == 0)) {
++                return false;
+             }
+-
+         }
+     }
+     return true;

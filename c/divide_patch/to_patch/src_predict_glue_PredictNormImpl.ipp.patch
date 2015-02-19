@@ -1,0 +1,233 @@
+Index: src/predict/glue/PredictNormImpl.ipp
+===================================================================
+--- src/predict/glue/PredictNormImpl.ipp	(revision 56548)
++++ src/predict/glue/PredictNormImpl.ipp	(working copy)
+@@ -25,7 +25,7 @@
+     fLastCacheLoadTime = 0;
+     fPredictEnableAutoThrottle = false;
+     fPredictAutoThrottleFreq = 0;
+-    fIsVbt = false;
++    fProbChooser.fIsVbt = false;
+     PredictConf conf;
+ 
+     if( filename != "" )
+@@ -94,7 +94,7 @@
+             value = "";
+             if(cfg.lookupValue("variance-based-throttling-available",value)) {
+                 conf.IsVBTThrottle(lexical_cast<bool>(value));
+-                fIsVbt = conf.IsVBTThrottle();
++                fProbChooser.fIsVbt = conf.IsVBTThrottle();
+             }
+             if(conf.IsVBTThrottle()) {
+                 if(cfg.lookupValue("click-throttle-multiplier", value) ) {
+@@ -140,7 +140,7 @@
+     fLastCacheLoadTime = 0;
+     fPredictEnableAutoThrottle = false;
+     fPredictAutoThrottleFreq = 0;
+-    fIsVbt = false;
++    fProbChooser.fIsVbt = false;
+     PredictConf conf;
+     conf.IsThrottle(true);
+     conf.IsClickThrottle(true);
+@@ -182,6 +182,7 @@
+     if(isId){
+         return MODELNAME;
+     }
++    PredictScopedReadLock lock(fPredictor->fCacheLock);    
+     util_debug(5,"EXIT : %s::getCacheVersion\n", CLASSNAME);
+     return fPredictor->getCacheVersion();
+ }
+@@ -190,6 +191,7 @@
+ bool PredictNormImpl<PDTR, CLASSNAME, MODELNAME, USEUPK>::isValid()
+ {
+     util_debug(5,"ENTER : %s::isValid\n", CLASSNAME);
++    PredictScopedReadLock lock(fPredictor->fCacheLock);    
+     util_debug(5,"EXIT : %s::isValid\n", CLASSNAME);
+     return fPredictor->isValid();
+ }
+@@ -204,7 +206,7 @@
+     }
+     PredictConf conf;
+     conf.FileName(qs);
+-    conf.IsVBTThrottle(fIsVbt);
++    conf.IsVBTThrottle(fProbChooser.fIsVbt);
+     conf.CachePrefix(CLASSNAME);
+     return fPredictor->refreshCache(conf);
+ }
+@@ -227,6 +229,7 @@
+     bool is_post_view = false, is_pearlified = false;
+     uint32_t vurl_id = 0;
+     entity_id_t publisher_id = 0;
++    PredictScopedReadLock lock(fPredictor->fCacheLock);
+     if (fPredictor->isValid()) {
+         if(fProbChooser.getPredictKey(fPredictor, click_prob, param, key, ukey,
+                 is_post_view, is_pearlified, vurl_id, publisher_id)) {
+@@ -248,6 +251,7 @@
+     uint64_t endTime = 0;
+     GET_MILLI_SEC(startTime);
+     util_debug(5,"ENTER : %s::getProb\n", CLASSNAME);
++    PredictScopedReadLock lock(fPredictor->fCacheLock);    
+     predict_key key;
+     predict_undiscretized_key ukey; //Not using now. Just for passing
+     bool is_post_view = false, is_pearlified = false;
+@@ -309,9 +313,6 @@
+         PricingType prtp, predict_key& key,
+         learning_status& learn_status,
+         ServerStats &serverStats, rm_string *detail) {
+-    uint64_t startTime = 0;
+-    uint64_t endTime = 0;
+-    GET_MILLI_SEC(startTime);
+ 
+     double learningProb = 0.0;
+     switch (prtp) {
+@@ -338,7 +339,6 @@
+         default:
+             break;
+     }
+-    LOG_TIME_DIFF(startTime, endTime, serverStats.p25PredictCallTime);
+     return learningProb;
+ }
+ 
+@@ -361,6 +361,7 @@
+     double CPX = 0.0;
+     bool retflg = false;
+ 
++    PredictScopedReadLock lock(fPredictor->fCacheLock);
+     switch (cl_typ) {
+         case register_click_prob: {
+             if(!fProbChooser.getPredictKey(fPredictor, click_prob, param, key, ukey, is_post_view, is_pearlified, vurl_id, publisher_id)) {
+@@ -425,6 +426,7 @@
+         const entity_id_t publisher_id)
+ {
+     util_debug(5,"ENTER : %s::getPearl\n", CLASSNAME);
++    PredictScopedReadLock lock(fPredictor->fCacheLock);
+     util_debug(5,"EXIT : %s::getPearl\n", CLASSNAME);
+     return fPredictor->getPearl(section_id, site_id, vurl_id, publisher_id);
+ }
+@@ -441,8 +443,20 @@
+     (void) ukey; //ignore this here.
+     util_debug(5, "ENTER : %s::getClickProb \n", CLASSNAME);
+     double prob = 0.0;
+-    prob = predictor->getClickProb(key, serverStats, detail);
+-    if(checkThrottle) { 
++    bool callProb = true;
++    if((!fIsVbt) && checkThrottle) {
++        callProb = !predictor->clickThrottle(key, 0.0, serverStats, detail);
++        if(callProb) {
++            ++serverStats.p25MaxClickPlusCalls;
++            ++serverStats.p25MaxCalls;
++        } else {
++            prob = 0.0;
++        }
++    }
++    if(callProb) {
++        prob = predictor->getClickProb(key, serverStats, detail);
++    }
++    if(fIsVbt && checkThrottle) {
+         if(!predictor->clickThrottle(key, prob, serverStats, detail)) {
+             ++serverStats.p25MaxClickPlusCalls;
+             ++serverStats.p25MaxCalls;
+@@ -465,15 +479,27 @@
+         bool checkThrottle) {
+     util_debug(5, "ENTER : %s::getClickProb \n", CLASSNAME);
+     double prob = 0.0;
+-    prob = predictor->getClickProb(key, ukey, serverStats, detail);
+-    if(checkThrottle) { 
+-        if(!predictor->clickThrottle(key, prob, serverStats, detail)) {
++    bool callProb = true;
++    if((!fIsVbt) && checkThrottle) {
++        callProb = !predictor->clickThrottle(key, 0.0, serverStats, detail);
++        if(callProb) {
+             ++serverStats.p25MaxClickPlusCalls;
+             ++serverStats.p25MaxCalls;
+         } else {
+             prob = 0.0;
+         }
+     }
++    if(callProb) {    
++        prob = predictor->getClickProb(key, ukey, serverStats, detail);
++    }
++    if(fIsVbt && checkThrottle) {
++        if(!predictor->clickThrottle(key, prob, serverStats, detail)) {
++            ++serverStats.p25MaxClickPlusCalls;
++            ++serverStats.p25MaxCalls;
++       } else {
++           prob = 0.0;
++       }
++    }
+ 
+     util_debug(5, "EXIT : %s::getClickProb click prob = %f\n", CLASSNAME, prob);
+     return prob;
+@@ -493,9 +519,10 @@
+     (void)ukey;
+     util_debug(5, "ENTER : %s::getConvProb \n", CLASSNAME);
+     double prob = 0.0;
+-    prob = predictor->getConvProb(key, is_post_view, serverStats, detail);
+-    if(checkThrottle) {
+-        if(!predictor->convThrottle(key, is_post_view, prob, serverStats, detail)){
++    bool callProb = true;
++    if((!fIsVbt) && checkThrottle) {
++        callProb = !predictor->convThrottle(key, is_post_view, 0.0, serverStats, detail);
++        if(callProb){
+             ++serverStats.p25MaxCalls;
+             if(is_post_view) {
+                 ++serverStats.p25MaxPostViewCalls;
+@@ -507,6 +534,21 @@
+             prob = 0.0;
+         }
+     }
++    if(callProb) {
++        prob = predictor->getConvProb(key, is_post_view, serverStats, detail);
++    }
++    if(fIsVbt && checkThrottle) {
++        if(!predictor->convThrottle(key, is_post_view, prob, serverStats, detail)){
++            ++serverStats.p25MaxCalls;
++            if(is_post_view) {    
++                ++serverStats.p25MaxPostViewCalls;
++            } else {
++                ++serverStats.p25MaxPostClickCalls;
++            }
++        } else {
++            prob = 0.0;
++        }
++    }
+     util_debug(5, "EXIT : %s::getConvProb conv prob = %f\n", CLASSNAME, prob);
+     return prob;
+ }
+@@ -524,8 +566,25 @@
+         bool checkThrottle) {
+     util_debug(5, "ENTER : %s::getConvProb \n", CLASSNAME);
+     double prob = 0.0;
+-    prob = predictor->getConvProb(key, ukey, is_post_view, serverStats, detail);
+-    if(checkThrottle) {
++    bool callProb = true;
++    if((!fIsVbt) && checkThrottle) {
++        callProb = !predictor->convThrottle(key, is_post_view, 0.0, serverStats, detail);
++        if(callProb){
++            ++serverStats.p25MaxCalls;
++            if(is_post_view) {
++                ++serverStats.p25MaxPostViewCalls;
++            } else {
++                ++serverStats.p25MaxPostClickCalls;
++            }
++
++        } else {
++            prob = 0.0;
++        }
++    }
++    if(callProb) {
++        prob = predictor->getConvProb(key, ukey, is_post_view, serverStats, detail);
++    }
++    if(fIsVbt && checkThrottle) {
+         if(!predictor->convThrottle(key, is_post_view, prob, serverStats, detail)){
+             ++serverStats.p25MaxCalls;
+             if(is_post_view) {
+@@ -620,7 +679,7 @@
+                 publisher_id, detail));
+ 
+     is_pearlified = (key[PEARL_ID] != 0);
+-    key[PUBCLASS] = predictor->getPubclass(key[PEARL_ID]);
++    key[PUBCLASS] = 0;
+     if(prtp == conv_prob) {
+         result = result && param.getValue(FV_IS_POST_VIEW, is_post_view);
+     }

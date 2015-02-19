@@ -1,0 +1,35 @@
+Index: src/predict/online/common/CommonPredictTypes.hpp
+===================================================================
+--- src/predict/online/common/CommonPredictTypes.hpp	(revision 56548)
++++ src/predict/online/common/CommonPredictTypes.hpp	(working copy)
+@@ -19,7 +19,7 @@
+ 
+ #include "util/YstReadWriteLock.hpp"
+ 
+-class Section;
++class EmptySection;
+ 
+ 
+ typedef std::set<mixed_id_t> IdArrayType;
+@@ -28,17 +28,14 @@
+ typedef mixed_id_t* IdArrayPtr;
+ typedef const mixed_id_t* IdArrayConstPtr;
+ 
+-typedef boost::shared_ptr<Section> SectionPtr;
+-typedef Section& SectionRef;
+-typedef std::vector<SectionPtr> SubSecTypeVec;
+-typedef boost::shared_ptr<SubSecTypeVec> SubSecTypeVecPtr;
+-typedef SubSecTypeVecPtr& SubSecTypeVecPtrRef;
++typedef EmptySection* SectionPtr;
++typedef EmptySection& SectionRef;
+ 
++typedef boost::shared_array<uint8_t> MemBlockType;
++
+ typedef std::vector<uint32_t> ordered_key;
+ typedef std::vector<mixed_id_t> ordered64_key;
+ 
+-typedef boost::shared_array<uint8_t> MemBlockType;
+-
+ typedef YstReadWriteLock::YstScopedReadLock PredictScopedReadLock;
+ typedef YstReadWriteLock::YstScopedWriteLock PredictScopedWriteLock;
+ typedef YstReadWriteLock PredictRWLock;

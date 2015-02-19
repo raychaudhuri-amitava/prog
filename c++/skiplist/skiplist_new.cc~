@@ -1,0 +1,280 @@
+/*************************************************************************/
+/* Implemented by me (Amitava) and then tested for all conditions.
+*  this is indeed very interesting for me to think and write complete
+*  code for skip lists. :
+*  1) use better random number generator (from boost or c++11)
+*  2) need to add iterator interface.
+*  3) the skip_node_t and skip_list_t should be in separate file.
+*  Please note that this is written after the completion of Phone interview
+*  for the sake of completeness and interest (24th Aug 2013)
+*/
+
+#include<iostream>
+#include<cstdlib>
+#include<limits>
+#include<ctime>
+#include<stdint.h>
+
+using namespace std;
+
+template<typename T>
+class skip_node_t {
+  private:
+    skip_node_t<T> *left;
+    skip_node_t<T> *right;
+    skip_node_t<T> *up;
+    skip_node_t<T> *down;
+    T data;
+
+  public:
+    skip_node_t() : left(NULL), right(NULL), up(NULL), down(NULL), data(0) {}
+    skip_node_t(T const &d) : left(NULL), right(NULL), up(NULL), down(NULL), data(d) {}
+
+    skip_node_t & operator=(skip_node_t const &skn) {
+        if(this != &skn) {
+            up = skn.up;
+            down = skn.down;
+            data = skn.data;
+        }
+        return *this;
+    }
+
+    skip_node_t<T> *above() const { return up;}
+    skip_node_t<T> *below() const { return down;}
+    skip_node_t<T> *before() { return left;}
+    skip_node_t<T> *after() { return right;}
+    void above(skip_node_t<T> * a) { up = a;}
+    void below(skip_node_t<T> * b) { down = b;}
+    void before(skip_node_t<T> * b) { left = b;}
+    void after(skip_node_t<T> * a) { right = a;}
+
+    T value() const { return data;}
+    void value(T const &d) {data = d;}
+
+    static skip_node_t<T> * min_node() { return new skip_node_t<T>(numeric_limits<T>::min());}
+    static skip_node_t<T> * max_node() { return new skip_node_t<T>(numeric_limits<T>::max());}
+};
+
+template<typename T> 
+class skip_list_t {
+  private:
+    skip_node_t<T> *skl;
+    skip_node_t<T> *start;
+    skip_node_t<T> *end;
+    size_t num_els;
+    size_t num_levels;
+
+  public:
+
+    skip_list_t() : skl(NULL), start(NULL), end(NULL), num_els(0), num_levels(0) {
+        srand(time(NULL));
+    }
+
+    bool search(T d) { 
+        skip_node_t<T>* val = search_priv(d);
+        return (val != NULL) && (val->value() == d);
+    }
+
+    ~skip_list_t() {
+        skip_node_t<T> *lst = skl;
+        num_els = 0;
+        num_levels = 0;
+        start = NULL;
+        end = NULL;
+        while(lst != NULL) {
+            skip_node_t<T> *nlst = above(lst);
+            destroy_level(lst);
+            lst = nlst; 
+        }
+    }
+
+    void remove(T d);
+    void insert(T d);
+
+    bool empty() const { return num_els == 0;}
+    size_t size() const { return num_els;}
+    size_t level_size() const { return num_levels;}
+
+    void print() const {
+        skip_node_t<T> * ps = start;
+        while(ps != NULL) {
+            skip_node_t<T> * rs = ps;
+            while(rs != NULL) {
+                cout<<rs->value()<<"    ";
+                rs = rs->after();
+            }
+            cout<<endl;
+            ps = ps->below();
+        }
+    }
+
+
+    
+  private:
+    skip_node_t<T> * search_priv(T d);
+    skip_node_t<T> * above(skip_node_t<T> * p) { return p != NULL ? p->above() : NULL;}        
+    skip_node_t<T> * below(skip_node_t<T> * p) { return p != NULL ? p->below() : NULL;}        
+    skip_node_t<T> * after(skip_node_t<T> * p) { return p != NULL ? p->after() : NULL; }        
+    skip_node_t<T> * before(skip_node_t<T> * p) { return p!= NULL ? p->before() : NULL;}        
+
+    skip_node_t<T> * before_till_above(skip_node_t<T> * p) { 
+        p = before(p);
+        while((p != NULL) && (above(p) == NULL)) {
+            p = before(p);
+        }
+        return p;
+    }
+
+    skip_node_t<T> * below_till_bottom(skip_node_t<T> * p) {
+        while(below(p) != NULL) {
+            p = below(p);
+        }
+        return p;
+    }
+
+    void destroy_level(skip_node_t<T> * p) {
+        while(p != NULL) {
+            skip_node_t<T> * tmp = p;            
+            p = after(p);
+            if(tmp->above() != NULL) {
+                tmp->above()->below(tmp->below());
+            }
+
+            if(tmp->below() != NULL) {
+                tmp->below()->above(tmp->above());
+            }
+
+            delete tmp;
+        }
+    }
+
+    bool flip_coin() { return rand()%2 == 1; }
+};
+
+template<typename T>
+skip_node_t<T> * skip_list_t<T>::search_priv(T d) {
+    if(empty()) return NULL;
+    skip_node_t<T> * p = start;
+    while(p != NULL) {
+       if(p->value() == d) {
+           return below_till_bottom(p);
+       } else if(p->value() < d) {           
+           p = after(p);
+       } else {
+           p = before(p);
+           if(below(p) != NULL) {
+               p = below(p);
+           } else {
+               return p;
+           }
+       }
+    }
+    return NULL;
+}
+
+template<typename T>
+void skip_list_t<T>::remove(T d) {
+    skip_node_t<T> * val = search_priv(d);
+    if((val == NULL) || (val->value() != d)) return;
+    skip_node_t<T> * lst = skl;
+    while(val != NULL) {
+        skip_node_t<T> * tmp = val;
+        val = above(val);
+        tmp->before()->after(tmp->after());
+        tmp->after()->before(tmp->before());
+        delete tmp;
+    }   
+    num_els--;
+}
+
+template<typename T>
+void skip_list_t<T>::insert(T d) {
+    if(empty()) {
+        skl = skip_node_t<T>::min_node();
+        skl->after(skip_node_t<T>::max_node());
+        skl->after()->before(skl);
+        start = skl;
+        end = skl->after();
+        num_levels++;
+        num_els+=2;
+    }
+    skip_node_t<T> *val = search_priv(d);
+
+    if((val != NULL) && (val->value() != d)) {
+        skip_node_t<T> *last_inserted = NULL;
+        while(val != NULL) {
+            skip_node_t<T> *tmp = new skip_node_t<T>(d);
+            tmp->after(val->after());
+            tmp->before(val);
+            tmp->before()->after(tmp);
+            tmp->after()->before(tmp);
+            tmp->below(last_inserted);
+            if(last_inserted != NULL) {
+                last_inserted->above(tmp);
+            }
+            last_inserted = tmp;
+            if(!flip_coin()) {
+                break;
+            }
+            val = before_till_above(val->after());
+            if(val != NULL) {
+                val = val->above();
+            } else {
+                skip_node_t<T> *tstart = skip_node_t<T>::min_node();
+                tstart->after(skip_node_t<T>::max_node());
+                tstart->after()->before(tstart);
+                tstart->below(start);
+                tstart->after()->below(end);
+                start->above(tstart);
+                end->above(tstart->after());
+                start = tstart;
+                end = tstart->after();                
+                num_levels++;
+                val = start;
+            }
+        }
+        num_els++;
+    }
+}
+
+int main(void) {
+
+    skip_list_t<int> sk;
+    for(int i = 10; i < 200; i+=10) {
+        int num = rand()%2 == 0? rand()%i : -(rand()%i);
+        cout<<"inserting element "<<num<<" levels till = "<<sk.level_size()<<endl;
+        sk.insert(num);
+    }
+
+    cout<<"Created a skiplist of size : "<<sk.size()<<"  levels = "<<sk.level_size()<<endl;
+    sk.print();
+    
+    for(int i = 10; i <= 200; i+=10) {
+        cout<<"searching val = "<<i<<" == "<<(sk.search(i) ? "found" : "not found")<<endl;
+    }
+    for(int i = 0; i < 10; i++) {
+        cout<<"searching val = "<<i<<" == "<<(sk.search(i) ? "found" : "not found")<<endl;
+    }
+    cout<<"Removing all values now"<<endl;
+    for(int i = 10; i < 1000; i+=10) {
+        sk.remove(i);
+    }
+    cout<<"Removed everything from skiplist (except sentinels)\nskiplist size = "<<sk.size()<<" levels = "<<sk.level_size()<<endl;
+    for(int i = 10; i <= 200; i+=10) {
+        cout<<"searching val = "<<i<<" == "<<(sk.search(i) ? "found" : "not found")<<endl;
+    }
+    for(int i = 0; i < 10; i++) {
+        cout<<"searching val = "<<i<<" == "<<(sk.search(i) ? "found" : "not found")<<endl;
+    }
+    for(int i = 10; i < 200; i+=10) {
+        cout<<"inserting element "<<i<<" levels till = "<<sk.level_size()<<endl;
+        sk.insert(i);
+    }
+    sk.print();
+    for(int i = 10; i <= 200; i+=10) {
+        cout<<"searching val = "<<i<<" == "<<(sk.search(i) ? "found" : "not found")<<endl;
+    }
+
+    return 0;
+}
+

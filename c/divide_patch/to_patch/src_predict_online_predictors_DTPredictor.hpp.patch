@@ -1,0 +1,61 @@
+Index: src/predict/online/predictors/DTPredictor.hpp
+===================================================================
+--- src/predict/online/predictors/DTPredictor.hpp	(revision 56548)
++++ src/predict/online/predictors/DTPredictor.hpp	(working copy)
+@@ -8,27 +8,27 @@
+ 
+ #include "Predictor.hpp"
+ 
+-class DTPredictor : public Predictor {
++class DTPredictor : public Predictor<DTPredictor> {
+ 
+     public:
+ 
+-    using Predictor::refreshCache;
+-    using Predictor::isValid;
+-    using Predictor::destroyCache;
+-    using Predictor::getPredictConf;
+-    using Predictor::getPearl;
+-    using Predictor::getPubclass;
+-    using Predictor::getCacheVersion;
+-    using Predictor::getClickModifier;
+-    using Predictor::getConvModifier;
+-    using Predictor::clickThrottle;
+-    using Predictor::convThrottle;
+-    using Predictor::registerClickImpression;
+-    using Predictor::registerConvImpression;
+-    using Predictor::getCPALearnProb;
+-    using Predictor::getCpcLearnProb;
+-    using Predictor::getDcpmLearnProb;
+-    using Predictor::getDcpmClickLearnProb;
++    using Predictor<DTPredictor>::refreshCache;
++    using Predictor<DTPredictor>::isValid;
++    using Predictor<DTPredictor>::destroyCache;
++    using Predictor<DTPredictor>::getPredictConf;
++    using Predictor<DTPredictor>::getPearl;
++    using Predictor<DTPredictor>::getPubclass;
++    using Predictor<DTPredictor>::getCacheVersion;
++    using Predictor<DTPredictor>::getClickModifier;
++    using Predictor<DTPredictor>::getConvModifier;
++    using Predictor<DTPredictor>::clickThrottle;
++    using Predictor<DTPredictor>::convThrottle;
++    using Predictor<DTPredictor>::registerClickImpression;
++    using Predictor<DTPredictor>::registerConvImpression;
++    using Predictor<DTPredictor>::getCPALearnProb;
++    using Predictor<DTPredictor>::getCpcLearnProb;
++    using Predictor<DTPredictor>::getDcpmLearnProb;
++    using Predictor<DTPredictor>::getDcpmClickLearnProb;
+ 
+     DTPredictor(PredictConf const& conf, bool& iscreated);
+ 
+@@ -53,8 +53,8 @@
+ 
+     protected:
+ 
+-    using Predictor::getClickmodifierInt;
+-    using Predictor::getConvmodifierInt;
++    using Predictor<DTPredictor>::getClickmodifierInt;
++    using Predictor<DTPredictor>::getConvmodifierInt;
+ 
+     private: //forbidden
+     DTPredictor(DTPredictor const&);

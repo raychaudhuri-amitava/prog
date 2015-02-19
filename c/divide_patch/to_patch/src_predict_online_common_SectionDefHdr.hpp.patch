@@ -1,0 +1,36 @@
+Index: src/predict/online/common/SectionDefHdr.hpp
+===================================================================
+--- src/predict/online/common/SectionDefHdr.hpp	(revision 0)
++++ src/predict/online/common/SectionDefHdr.hpp	(revision 0)
+@@ -0,0 +1,31 @@
++/* -*- mode: c++; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4 -*- */
++/* vi: set expandtab shiftwidth=4 tabstop=4: */
++
++#pragma once
++
++#ifndef __COMMON_SECTION_DEF_HDR_HPP
++#define __COMMON_SECTION_DEF_HDR_HPP
++
++#include "predict/online/sections/Section.hpp"
++
++struct SubSecTypeVec {
++    typedef SectionPtr* SubSection;
++    SubSection sub_secs;
++    size_t no_subsecs;
++    SubSecTypeVec() : sub_secs(NULL),
++            no_subsecs(0){}
++    ~SubSecTypeVec() {
++        for(size_t i = 0; i < no_subsecs; ++i) {
++            delete sub_secs[i];
++            sub_secs[i] = NULL;
++        }
++        delete [] sub_secs;
++        no_subsecs = 0;
++        sub_secs = NULL;
++    }
++};
++
++typedef SubSecTypeVec* SubSecTypeVecPtr;
++typedef SubSecTypeVec& SubSecTypeVecRef;
++
++#endif //__COMMON_SECTION_DEF_HDR_HPP

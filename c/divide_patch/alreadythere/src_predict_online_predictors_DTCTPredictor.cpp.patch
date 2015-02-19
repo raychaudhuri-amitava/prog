@@ -1,0 +1,75 @@
+Index: src/predict/online/predictors/DTCTPredictor.cpp
+===================================================================
+--- src/predict/online/predictors/DTCTPredictor.cpp	(revision 56548)
++++ src/predict/online/predictors/DTCTPredictor.cpp	(working copy)
+@@ -3,6 +3,8 @@
+ 
+ #include "DTCTPredictor.hpp"
+ 
++#include "predict/online/common/SectionDefHdr.hpp"
++
+ #include "traffic/objects/rm_string.hpp"
+ #include "predict/online/sections/ConstantArray.hpp"
+ 
+@@ -49,8 +51,8 @@
+                    predict_undiscretized_key& ukey,
+                    ServerStats& stats, rm_string *detail) const {
+     (void)detail;
+-    PredictScopedReadLock lock(fCacheLock);
+-    SectionPtr constants = fCache->getSection(section::type::CLICK, section::subtype::CT_CONSTANTS, 0);
++    key[PUBCLASS] = getPubclass(key[PEARL_ID]);
++    SectionPtr constants = ((fCache->fSections)[section::type::CLICK][section::subtype::CT_CONSTANTS]).sub_secs[0];
+     double baseprob = getGLMMBaselineProb(section::type::CLICK,
+                                           key, ukey,
+                                           constants,
+@@ -92,8 +94,8 @@
+         click_prob = getClickProb(key, ukey,
+                 stats, detail);
+     }
+-    PredictScopedReadLock lock(fCacheLock);
+-    SectionPtr constants = fCache->getSection(type, section::subtype::CT_CONSTANTS, 0);
++    key[PUBCLASS] = getPubclass(key[PEARL_ID]);
++    SectionPtr constants = ((fCache->fSections)[type][section::subtype::CT_CONSTANTS]).sub_secs[0];
+ 
+     double baseprob = getGLMMBaselineProb(type,key, ukey,
+                                           constants,
+@@ -120,10 +122,9 @@
+ 
+     double baseline_prob = 0.0;
+ 
+-    SubSecTypeVecPtrRef sections = fCache->getSection(type,
+-                                    section::subtype::DT_OPT);
++    SectionPtr sections = ((fCache->fSections)[type][section::subtype::DT_OPT]).sub_secs[0];
+ 
+-    if(((*(sections))[0])->getValue(key, ukey, baseline_prob, stats, detail)) {
++    if(sections->getValue(key, ukey, baseline_prob, stats, detail)) {
+         double intc = 0.0;
+         if(ctConst->getValue(predict::ct_constants::CT_GLMM_INTERCEPT, intc)) {
+             baseline_prob += intc;
+@@ -143,20 +144,19 @@
+                           double baseprob,
+                           SectionPtr ctConst,
+                           ServerStats& stats, rm_string *detail) const {
+-    SubSecTypeVecPtrRef sections = fCache->getSection(type, section::subtype::EM);
++    SubSecTypeVecRef sections = (fCache->fSections)[type][section::subtype::EM];
+     double correction = 1.0;
+-    uint64_t siz = sections->size();
+-    for(uint64_t i = 0; i < siz; i++) {
++    for(uint64_t i = 0; i < sections.no_subsecs; i++) {
+         double dmy_prob = 1.0;
+-        if(((*(sections))[i])->getValue(key, ukey, dmy_prob, stats, detail)) {
++        if(((sections.sub_secs)[i])->getValue(key, ukey, dmy_prob, stats, detail)) {
+             correction *= dmy_prob;
+         }
+     }
+     double baseline_tries = 1.0;
+-    SubSecTypeVecPtrRef bstr_sections = fCache->getSection(type, section::subtype::GLMMES);
+-    uint64_t bstr_siz = bstr_sections->size();
++    SubSecTypeVecRef bstr_sections = (fCache->fSections)[type][section::subtype::GLMMES];
++    uint64_t bstr_siz = bstr_sections.no_subsecs;
+ 
+-    if((bstr_siz > 0) && !(((*(bstr_sections))[0])->getValue(key, ukey, baseline_tries, stats, detail))) {
++    if((bstr_siz > 0) && !((bstr_sections.sub_secs)[0])->getValue(key, ukey, baseline_tries, stats, detail)) {
+         baseline_tries = 1.0;
+     }
+     double prob = baseprob*correction;

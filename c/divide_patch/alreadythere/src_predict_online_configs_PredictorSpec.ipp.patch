@@ -1,0 +1,41 @@
+Index: src/predict/online/configs/PredictorSpec.ipp
+===================================================================
+--- src/predict/online/configs/PredictorSpec.ipp	(revision 56548)
++++ src/predict/online/configs/PredictorSpec.ipp	(working copy)
+@@ -16,20 +16,31 @@
+ }
+ 
+ inline bool PredictorSpec::isSectionValid(int32_t stype, int32_t sbtype) const {
+-    return isDisallowed(stype, sbtype) ? false : (fSpec[stype][sbtype] != section::spec::DEFAULT_SPEC);
++    return isDisallowed(stype, sbtype) ? false : ((fSpec[stype][sbtype] & section::spec::PART_OF_FLAG) == section::spec::PART_OF_FLAG);
+ }
+ 
+ inline bool PredictorSpec::isSectionOptional(int32_t stype, int32_t sbtype) const {
+-    return isDisallowed(stype, sbtype) ? false : (fSpec[stype][sbtype] == section::spec::OPTN_PART_OF);
++    return isDisallowed(stype, sbtype) ? false : (isSectionValid(stype, sbtype) ?  
++                                                  (fSpec[stype][sbtype] & section::spec::OPT_FLAG) == section::spec::OPT_FLAG :
++                                                   false);
+ }
+ 
+ inline bool PredictorSpec::isSectionMandatory(int32_t stype, int32_t sbtype) const {
+-    return isDisallowed(stype, sbtype) ? false : (fSpec[stype][sbtype] == section::spec::MAND_PART_OF);
++    return isDisallowed(stype, sbtype) ? false : (isSectionValid(stype, sbtype) ?
++                                                  (fSpec[stype][sbtype] & section::spec::OPT_FLAG) == section::spec::DEFAULT_FLAG : 
++                                                  false);
+ }
+ 
+-inline PredictorSpec& PredictorSpec::operator()(int32_t type, int32_t subtype, bool isOptional) {
++inline bool PredictorSpec::isSectionSepBlock(int32_t stype, int32_t sbtype) const {
++    return isDisallowed(stype, sbtype) ? false : (isSectionValid(stype, sbtype) ?
++                                                  (fSpec[stype][sbtype] & section::spec::SB_FLAG) == section::spec::SB_FLAG : 
++                                                  false);
++}
++
++inline PredictorSpec& PredictorSpec::operator()(int32_t type, int32_t subtype, bool sepBlock, bool isOptional) {
+     if(!isDisallowed(type, subtype)) {
+-        isOptional ? fSpec[type][subtype] = section::spec::OPTN_PART_OF : fSpec[type][subtype] = section::spec::MAND_PART_OF;
++        isOptional ? (sepBlock ? fSpec[type][subtype] = section::spec::SB_OPTN_PART_OF : fSpec[type][subtype] = section::spec::OPTN_PART_OF)
++                   : (sepBlock ? fSpec[type][subtype] = section::spec::SB_MAND_PART_OF : fSpec[type][subtype] = section::spec::MAND_PART_OF);
+     }
+     return *this;
+ }

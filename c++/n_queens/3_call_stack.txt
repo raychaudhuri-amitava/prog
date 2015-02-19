@@ -1,0 +1,13 @@
+Solving n-queens for n = 3
++_h_queen(3,0,[  0  0  0  ])
++_h_queen(3,1,[  0  0  0  ])
++_h_queen(3,2,[  0  2  0  ])
+-_h_queen(3,2,[  0  2  2  ])
+-_h_queen(3,1,[  0  2  2  ])
++_h_queen(3,1,[  1  2  2  ])
+-_h_queen(3,1,[  1  2  2  ])
++_h_queen(3,1,[  2  2  2  ])
++_h_queen(3,2,[  2  0  2  ])
+-_h_queen(3,2,[  2  0  2  ])
+-_h_queen(3,1,[  2  2  2  ])
+-_h_queen(3,0,[  2  2  2  ])

@@ -1,0 +1,43 @@
+Index: src/predict/glue/PredictNormImpl.hpp
+===================================================================
+--- src/predict/glue/PredictNormImpl.hpp	(revision 56548)
++++ src/predict/glue/PredictNormImpl.hpp	(working copy)
+@@ -30,6 +30,7 @@
+ 
+ template<class PDTR>
+ struct ProbFuncChooser<PDTR, true> {
++    ProbFuncChooser() : fIsVbt(false) {}
+     double getClickProb(PDTR* predictor,
+             predict_key& key,
+             predict_undiscretized_key& ukey,
+@@ -57,11 +58,12 @@
+             bool &is_post_view, bool &is_pearlified,
+             uint32_t &vurl_id, entity_id_t &publisher_id,
+             rm_string *detail = NULL);
+-
++    bool fIsVbt;
+ };
+ 
+ template<class PDTR>
+ struct ProbFuncChooser<PDTR, false> {
++    ProbFuncChooser() : fIsVbt(false) {}
+     double getClickProb(PDTR* predictor,
+             predict_key& key,
+             predict_undiscretized_key& ukey,
+@@ -89,7 +91,7 @@
+             bool &is_post_view, bool &is_pearlified,
+             uint32_t &vurl_id, entity_id_t &publisher_id,
+             rm_string *detail = NULL);
+-
++    bool fIsVbt;
+ };
+ 
+ template<class PDTR, const char* CLASSNAME, const char* MODELNAME, bool USEUPK>
+@@ -146,7 +148,6 @@
+             double fLastCacheLoadTime;
+             double fPredictAutoThrottleFreq;
+ 
+-            bool fIsVbt;
+             ProbFuncChooser<PDTR, USEUPK> fProbChooser;
+ };
+ 

@@ -1,0 +1,40 @@
+Index: src/predict/online/common/SectionTypes.hpp
+===================================================================
+--- src/predict/online/common/SectionTypes.hpp	(revision 56548)
++++ src/predict/online/common/SectionTypes.hpp	(working copy)
+@@ -151,11 +151,26 @@
+ 
+ namespace section {
+     namespace spec {
++        enum flag {
++            INVALID_FLAG = -1,
++            DEFAULT_FLAG = 0x00,
++            PART_OF_FLAG = 0x01,
++            OPT_FLAG = 0x02,
++            SB_FLAG = 0x04,
++            MAX_FLAG //This is used just as a constant.
++        };
++    }
++}
++
++namespace section {
++    namespace spec {
+         enum sp {
+             INVALID_SPEC = -1,
+             DEFAULT_SPEC = 0x00,
+             MAND_PART_OF = 0x01,
+             OPTN_PART_OF = 0x03,
++            SB_MAND_PART_OF = 0x05,
++            SB_OPTN_PART_OF = 0x07,
+             MAX_SPEC //This is used just as a constant.
+         };
+     }
+@@ -173,6 +188,8 @@
+                 NAME_ENUM(section::spec::DEFAULT_SPEC)
+                 NAME_ENUM(section::spec::MAND_PART_OF)
+                 NAME_ENUM(section::spec::OPTN_PART_OF)
++                NAME_ENUM(section::spec::SB_MAND_PART_OF)
++                NAME_ENUM(section::spec::SB_OPTN_PART_OF)
+             ;
+         }
+     };

@@ -1,0 +1,47 @@
+Index: src/predict/online/predictcache/PredictCache.ipp
+===================================================================
+--- src/predict/online/predictcache/PredictCache.ipp	(revision 56548)
++++ src/predict/online/predictcache/PredictCache.ipp	(working copy)
+@@ -12,12 +12,12 @@
+     return &((fHeader->cache_version_string)[0]);
+ }
+ 
+-inline SubSecTypeVecPtrRef PredictCache::getSection(int32_t sec_type, int32_t sec_sub_type) {
++inline SubSecTypeVecRef PredictCache::getSection(int32_t sec_type, int32_t sec_sub_type) {
+     return fSections[sec_type][sec_sub_type];
+ }
+ 
+ inline SectionPtr PredictCache::getSection(int32_t sec_type, int32_t sec_sub_type, int32_t sec_pos) {
+-    return (*(fSections[sec_type][sec_sub_type]))[0];
++    return ((fSections[sec_type][sec_sub_type]).sub_secs)[sec_pos];
+ }
+ 
+ inline PredictCache::iterator PredictCache::begin() {
+@@ -45,11 +45,11 @@
+ }
+ 
+ inline PredictCache::iterator PredictCache::end(int32_t tp) {
+-    return iterator(&fSections, tp, fSections[tp].size());
++    return iterator(&fSections, tp, (tp == section::type::GEN) ? int32_t(section::gensubtype::MAX_GENSUBTYPES) : int32_t(section::subtype::MAX_SUBTYPES));
+ }
+ 
+ inline PredictCache::const_iterator PredictCache::end(int32_t tp) const {
+-    return const_iterator(&fSections, tp, fSections[tp].size());
++    return const_iterator(&fSections, tp, (tp == section::type::GEN) ? int32_t(section::gensubtype::MAX_GENSUBTYPES) : int32_t(section::subtype::MAX_SUBTYPES));
+ }
+ 
+ inline PredictCache::iterator PredictCache::begin(int32_t tp, int32_t subtp) {
+@@ -62,11 +62,11 @@
+ 
+ 
+ inline PredictCache::iterator PredictCache::end(int32_t tp, int32_t subtp) {
+-    return iterator(&fSections, tp, subtp, (fSections[tp][subtp]) ? (fSections[tp][subtp])->size():0);
++    return iterator(&fSections, tp, subtp, (fSections[tp][subtp]).no_subsecs);
+ }
+ 
+ inline PredictCache::const_iterator PredictCache::end(int32_t tp, int32_t subtp) const {
+-    return const_iterator(&fSections, tp, subtp, (fSections[tp][subtp]) ? (fSections[tp][subtp])->size() : 0);
++    return const_iterator(&fSections, tp, subtp, (fSections[tp][subtp]).no_subsecs);
+ }
+ 
+ inline PredictCache::iterator PredictCache::find(int32_t type, int32_t subtype, size_t secpos) {

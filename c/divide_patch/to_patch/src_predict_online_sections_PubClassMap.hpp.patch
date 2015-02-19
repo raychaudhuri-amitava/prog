@@ -1,0 +1,45 @@
+Index: src/predict/online/sections/PubClassMap.hpp
+===================================================================
+--- src/predict/online/sections/PubClassMap.hpp	(revision 56548)
++++ src/predict/online/sections/PubClassMap.hpp	(working copy)
+@@ -14,7 +14,7 @@
+ #include "predict/online/common/PearlMapCommonHeader.hpp"
+ #include "Section.hpp"
+ 
+-class PubClassMap : public Section {
++class PubClassMap : public Section<PubClassMap> {
+ 
+     private:
+     typedef pub_class_element Element;
+@@ -22,19 +22,24 @@
+     typedef CommonSizeHeader::type Header;
+ 
+     public:
+-    explicit PubClassMap(IdArrayConstPtr ptr, CommonSectionHeaderRef hdr) : Section(ptr, hdr),
++    explicit PubClassMap(IdArrayConstPtr ptr, CommonSectionHeaderRef hdr) :
++             Section<PubClassMap>(ptr, hdr),
+              fContainer(NULL), fSize(0) {}
+ 
+-    virtual bool load(MemBlockType &mem, size_t &tillRead);
++    bool load(MemBlockType &mem, size_t &tillRead);
+ 
+     // mixed_id_t will either give the pearl or site/section/vurl/pub id.
+-    virtual bool getValue(mixed_id_t const& key,
+-                          mixed_id_t& value,
+-                          ServerStats& stats,
+-                          rm_string *detail) const;
++    bool getValue(mixed_id_t const& key,
++                  mixed_id_t& value,
++                  ServerStats& stats,
++                  rm_string *detail) const;
+ 
+-    virtual void dump(std::ostream& out, bool isDumpHeader) const;
++    void dump(std::ostream& out, bool isDumpHeader) const;
+ 
++    protected:
++    using Section<PubClassMap>::fCache;
++    using Section<PubClassMap>::fType;
++
+     private:
+     Container fContainer;
+     Header fSize;

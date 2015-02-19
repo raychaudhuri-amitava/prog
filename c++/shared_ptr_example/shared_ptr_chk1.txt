@@ -1,0 +1,116 @@
+In main before calling producerSharedPtr()
+Entering function : producerSharedPtr()
+a = 1 so its cclass at i = 0
+In constructor x = 0
+cclass: In constructor
+a = 0 so its bclass at i = 1
+In constructor x = 0
+bclass: In constructor
+a = 1 so its cclass at i = 2
+In constructor x = 0
+cclass: In constructor
+a = 1 so its cclass at i = 3
+In constructor x = 0
+cclass: In constructor
+cclass: in setx with y = 0
+bclass: in setx with y = 1
+cclass: in setx with y = 2
+cclass: in setx with y = 3
+cclass: in setx with y = 0
+bclass: in setx with y = 1
+cclass: in setx with y = 2
+cclass: in setx with y = 3
+Exiting function : producerSharedPtr()
+In main after calling producerSharedPtr()
+Printing values now: 
+cclass: y = 0
+bclass: y = 1
+cclass: y = 2
+cclass: y = 3
+In main before calling producerSharedPtr() again
+Entering function : producerSharedPtr()
+a = 1 so its cclass at i = 0
+In constructor x = 0
+cclass: In constructor
+a = 1 so its cclass at i = 1
+In constructor x = 0
+cclass: In constructor
+a = 0 so its bclass at i = 2
+In constructor x = 0
+bclass: In constructor
+a = 0 so its bclass at i = 3
+In constructor x = 0
+bclass: In constructor
+cclass: in setx with y = 0
+bclass: in setx with y = 1
+cclass: in setx with y = 2
+cclass: in setx with y = 3
+cclass: in setx with y = 4
+cclass: in setx with y = 5
+bclass: in setx with y = 6
+bclass: in setx with y = 7
+cclass: in setx with y = 0
+bclass: in setx with y = 1
+cclass: in setx with y = 2
+cclass: in setx with y = 3
+Exiting function : producerSharedPtr()
+In main after calling producerSharedPtr() again
+Printing values now: 
+cclass: y = 0
+bclass: y = 1
+cclass: y = 2
+cclass: y = 3
+cclass: y = 4
+cclass: y = 5
+bclass: y = 6
+bclass: y = 7
+In main before calling producerPtr()
+Entering function : producerPtr()
+a = 1 so its cclass at i = 0
+In constructor x = 0
+cclass: In constructor
+a = 1 so its cclass at i = 1
+In constructor x = 0
+cclass: In constructor
+a = 0 so its bclass at i = 2
+In constructor x = 0
+bclass: In constructor
+a = 1 so its cclass at i = 3
+In constructor x = 0
+cclass: In constructor
+cclass: in setx with y = 0
+cclass: in setx with y = 1
+bclass: in setx with y = 2
+cclass: in setx with y = 3
+cclass: in setx with y = 0
+cclass: in setx with y = 1
+bclass: in setx with y = 2
+cclass: in setx with y = 3
+Exiting function : producerPtr()
+In main after calling producerPtr()
+The value = 
+bclass: y = 2
+cclass: In destructor y = 0
+In destructor x = 0
+cclass: In destructor y = 1
+In destructor x = 0
+bclass: In destructor y = 2
+In destructor x = 0
+cclass: In destructor y = 3
+In destructor x = 0
+cclass: In destructor y = 0
+In destructor x = 0
+bclass: In destructor y = 1
+In destructor x = 0
+cclass: In destructor y = 2
+In destructor x = 0
+cclass: In destructor y = 3
+In destructor x = 0
+cclass: In destructor y = 4
+In destructor x = 0
+cclass: In destructor y = 5
+In destructor x = 0
+bclass: In destructor y = 6
+In destructor x = 0
+bclass: In destructor y = 7
+In destructor x = 0

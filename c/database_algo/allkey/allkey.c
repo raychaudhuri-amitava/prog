@@ -1,0 +1,383 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+
+
+typedef struct FD
+{
+	char * X;
+	char * Y;
+}FD;
+
+void getstr(char ** str)
+{
+	char c=0;
+	int i=0;	
+	
+	(*str)=(char*)calloc(1,sizeof(char));
+	c=getchar();
+	while(c!='\n'&&c!='\r')
+	{		
+		(*str)[i]=c;
+		(*str)[i]=toupper((*str)[i]);		
+		i++;
+		(*str)=(char*)realloc((*str),(i+1)*sizeof(char));
+		c=getchar();
+	}
+	(*str)[i]='\0';
+}
+
+
+unsigned long int fact(unsigned long int n)
+{
+	unsigned long int mul=1;	
+	if(n<0)return 1;
+	mul=1;
+	while(n>0)
+	{
+		if(n>0)
+			mul=mul*n;
+		else
+			mul=mul*1;
+		n--;
+	}
+	return mul;
+}
+
+
+unsigned long int factdiv(unsigned long int n,unsigned long int n1)
+{
+	unsigned int r=0;
+	unsigned int i=0; 
+	unsigned long int mul=1;
+	if(n<n1) return 0;
+
+	r=n-n1;
+	mul=1;
+    for(i=0;i<r;i++)
+	{
+		mul=mul*n;
+		n--;
+	}
+	return mul;
+}
+
+
+unsigned long int nCr(unsigned long int n,unsigned long int r)
+{
+	if((n-r)>r)
+		return factdiv(n,n-r)/fact(r);
+	else 
+		return factdiv(n,r)/fact(n-r);
+}
+
+
+int checkEl(char * R,char *X)
+{
+	int i=0,j=0;
+	int len=strlen(R);
+
+	while(X[i]!='\0')
+	{
+		j=0;
+		while(R[j]!='\0')
+		{
+			if(X[i]==R[j])
+			{
+				break;
+			}
+			j++;
+		}
+		if(j>=len)return 0;
+		i++;
+	}
+	return 1;
+}
+
+
+
+int checkSubset(char * a,char * XC) /* a is in XC (closure of X) */
+{
+	int i=0,j=0;
+	int len=strlen(XC);
+	while(a[i]!='\0')
+	{
+		j=0;
+		while(XC[j]!='\0')
+		{
+			if(a[i]==XC[j])break;
+			j++;
+		}
+		i++;
+		if(j>=len)return 0;
+	}
+	return 1;
+}
+
+int ifpresent(char c,char * a)
+{
+	int i=0;
+	while(a[i]!='\0')
+	{
+		if(c==a[i])return 1;
+		i++;
+	}
+	return 0;
+}
+
+int ifexist(FD*fd,int max,char * X,char *Y)
+{
+	int i=0;
+	for(i=0;i<max;i++)
+	{
+		if((strcmp(X,fd[i].X)==0)&&(strcmp(Y,fd[i].Y)==0))
+		{
+			return 1;
+		}
+	}
+	return 0;
+}
+
+
+char*strcatU(char*XC,const char * a)
+{
+	int i=0,j=0;
+	j=strlen(XC);
+	while(a[i]!='\0')
+	{
+		if(ifpresent(a[i],XC)==0)
+		{
+			XC=(char*)realloc(XC,(j+2)*sizeof(char));
+			XC[j]=a[i];
+			XC[j+1]='\0';
+			j++;
+		}
+		i++;
+	}
+	return XC;
+}
+
+
+
+char * XCLOSURE(char * X,FD * fd,int n,char * R)
+{
+	char * XC=NULL,*OLDXC=NULL;
+	int i=0;
+	
+	if(checkEl(R,X)==0)
+		return NULL;
+
+	XC=(char*)malloc((strlen(X)+1)*sizeof(char));
+	OLDXC=(char*)malloc(1*sizeof(char));
+	
+	OLDXC[0]='\0';
+	XC=strcpy(XC,X);
+	
+	do
+	{		
+		OLDXC=(char*)realloc(OLDXC,(strlen(XC)+1)*sizeof(char));
+		OLDXC=strcpy(OLDXC,XC);
+		for(i=0;i<n;i++)
+		{
+			if(checkSubset(fd[i].X,XC)==1)
+			{
+				XC=(char*)realloc(XC,(strlen(XC)+strlen(fd[i].Y)+1)*sizeof(char));
+				XC=strcatU(XC,fd[i].Y);
+			}
+		}
+		if(strcmp(XC,OLDXC)==0)break;			
+	}while(1);
+	free(OLDXC);
+	return XC;
+}
+
+int chrcmp(const void*a,const void*b)
+{
+	if((*(char*)a)==(*(char*)b))return 0;
+	else if((*(char*)a)<(*(char*)b))return -1;
+	else return 1;
+}
+
+char * strikeOff(char *a,char c)
+{
+	int i=0,k=0;
+	char * b=(char*)malloc(1*sizeof(char));
+	k=0;
+	while(a[i]!='\0')
+	{
+		if(a[i]!=c)
+		{
+			b[k]=a[i];
+			k++;
+			b=(char*)realloc(b,(k+1)*sizeof(char));
+		}
+		i++;
+	}
+	b[k]='\0';		
+	free(a);
+	a=NULL;
+	a=b;
+	
+	return b;
+}
+
+int strcmpa(const char *a,const char * b)
+{
+	int i=0,j=0;
+
+	if(strlen(a)!=strlen(b))return 1;
+
+	while(a[i]!='\0')
+	{
+		j=0;
+		while(b[j]!='\0')
+		{
+			if(a[i]==b[j])break;
+			j++;
+		}
+		if(b[j]=='\0')return 1;
+		i++;
+	}
+	return 0;
+}
+
+
+char ** calKey(char * R,FD*G,int ng,int * knum)
+{
+	unsigned int i=0,len=0,kn=0,l=0,m=0,k=0;
+	char * sk=NULL;
+	char ** key=(char **)malloc(1*sizeof(char*));
+	char * XC=NULL;
+	unsigned int flag=0,r=0;
+	unsigned long int num=0;
+
+	len=strlen(R);
+	qsort(R,len,sizeof(char),chrcmp);
+	kn=0;
+	for(r=1;r<=len;r++)
+	{		
+		num=nCr(len,r);
+		flag=0;
+		l=0;
+		m=1;
+		for(i=0;i<num;i++)
+		{
+			if(sk!=NULL)
+			{
+				free(sk);
+				sk=NULL;
+			}
+			sk=(char*)malloc((r+1)*sizeof(char));			
+			sk[0]=R[l];
+			if(r==1)l++;
+			for(k=1;k<r;k++)
+			{				
+				if(m>=len)
+				{
+					l++;					
+					m=l+1;
+					sk[0]=R[l];
+				}
+				sk[k]=R[m];
+				m++;		
+				if(m==l)m=m+1;
+			}
+			sk[k]='\0';			
+			XC=XCLOSURE(sk,G,ng,R);			
+			if(strcmpa(XC,R)==0)
+			{
+				// Copy sk to key.
+				flag=1;
+				key=(char**)realloc(key,(kn+1)*sizeof(char*));
+				key[kn]=(char*)malloc((r+1)*sizeof(char));
+				strcpy(key[kn],sk);								
+				kn++;
+			}		
+			free(XC);
+			XC=NULL;
+		}
+		if(flag==1)break;
+	}
+
+	(*knum)=kn;
+	return key;
+}
+
+
+int main(void)
+{
+	int n=0,i=0,j=0,kn=0;
+	FD * fd=NULL;
+	char * R=NULL;		
+	char ** key=NULL;
+	printf("Enter the Max No. of FD's : ");
+    getstr(&R);
+    n = atoi(R);
+    free(R);
+    R=NULL;
+	fd=(FD*)malloc(n*sizeof(FD));
+	
+	printf("Enter the variables of relations without commas  : ");
+	getstr(&R);
+
+	
+	for(i=0;i<n;i++)
+	{
+		system("clear");
+		printf("Enter the functional dependency : \n");
+		printf("Enter X : ");
+		getstr(&(fd[i].X));
+		printf("Enter Y : ");
+		getstr(&(fd[i].Y));
+		if((checkEl(R,fd[i].X)==0)||(checkEl(R,fd[i].Y)==0))
+		{
+			free(fd[i].X);
+			free(fd[i].Y);
+			fd[i].X=NULL;
+			fd[i].Y=NULL;
+			i=i-1;
+			printf("The dependencies entered by you are not in the set.\nPlease re-enter after rechecking.\n");
+			getchar();
+		}
+		else if(ifexist(fd,i,fd[i].X,fd[i].Y)==1)
+		{
+			free(fd[i].X);
+			free(fd[i].Y);
+			fd[i].X=NULL;
+			fd[i].Y=NULL;
+			i=i-1;
+			printf("The dependencies already entered by you.\nPlease re-enter after rechecking.\n");
+			getchar();
+		}
+
+	}
+	system("clear");
+	printf("The following dependiencies are recorded : \n");
+	for(i=0;i<n;i++)
+	{			
+		printf("\n%s -----> %s",fd[i].X,fd[i].Y);
+	}
+
+	getchar();
+	
+
+	key=calKey(R,fd,n,&kn);
+	printf("The keys of the given Relation is : ");
+	for(i=0;i<kn;i++)
+	{
+		printf("'%s' ",key[i]);
+		free(key[i]);
+	}
+    printf("\n");
+	
+	free(R);
+	free(key);
+	for(i=0;i<n;i++)
+	{
+		free(fd[i].X);
+		free(fd[i].Y);
+	}
+	free(fd);
+	
+	return 0;
+}

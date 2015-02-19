@@ -1,0 +1,77 @@
+Index: src/predict/online/predictors/CTPredictor.hpp
+===================================================================
+--- src/predict/online/predictors/CTPredictor.hpp	(revision 56548)
++++ src/predict/online/predictors/CTPredictor.hpp	(working copy)
+@@ -16,27 +16,27 @@
+ #include "predict/online/common/GlobalLearnHdr.hpp"
+ #include "predict/online/common/LearnCommonHeader.hpp"
+ 
+-class CTPredictor : public Predictor {
++class CTPredictor : public Predictor<CTPredictor> {
+ 
+     public:
+ 
+-    using Predictor::refreshCache;
+-    using Predictor::isValid;
+-    using Predictor::destroyCache;
+-    using Predictor::getPredictConf;
+-    using Predictor::getPearl;
+-    using Predictor::getPubclass;
+-    using Predictor::getCacheVersion;
+-    using Predictor::getClickModifier;
+-    using Predictor::getConvModifier;
+-    using Predictor::clickThrottle;
+-    using Predictor::convThrottle;
+-    using Predictor::registerClickImpression;
+-    using Predictor::registerConvImpression;
+-    using Predictor::getCPALearnProb;
+-    using Predictor::getCpcLearnProb;
+-    using Predictor::getDcpmLearnProb;
+-    using Predictor::getDcpmClickLearnProb;
++    using Predictor<CTPredictor>::refreshCache;
++    using Predictor<CTPredictor>::isValid;
++    using Predictor<CTPredictor>::destroyCache;
++    using Predictor<CTPredictor>::getPredictConf;
++    using Predictor<CTPredictor>::getPearl;
++    using Predictor<CTPredictor>::getPubclass;
++    using Predictor<CTPredictor>::getCacheVersion;
++    using Predictor<CTPredictor>::getClickModifier;
++    using Predictor<CTPredictor>::getConvModifier;
++    using Predictor<CTPredictor>::clickThrottle;
++    using Predictor<CTPredictor>::convThrottle;
++    using Predictor<CTPredictor>::registerClickImpression;
++    using Predictor<CTPredictor>::registerConvImpression;
++    using Predictor<CTPredictor>::getCPALearnProb;
++    using Predictor<CTPredictor>::getCpcLearnProb;
++    using Predictor<CTPredictor>::getDcpmLearnProb;
++    using Predictor<CTPredictor>::getDcpmClickLearnProb;
+ 
+     CTPredictor(PredictConf const& conf, bool& iscreated);
+ 
+@@ -62,8 +62,8 @@
+ 
+     protected:
+ 
+-    using Predictor::getClickmodifierInt;
+-    using Predictor::getConvmodifierInt;
++    using Predictor<CTPredictor>::getClickmodifierInt;
++    using Predictor<CTPredictor>::getConvmodifierInt;
+ 
+     private: //forbidden
+     CTPredictor(CTPredictor const&);
+@@ -78,13 +78,13 @@
+ 
+     double getGLMMBaselineProb(int32_t type, predict_key& key,
+                                predict_undiscretized_key& ukey,
+-                               SectionPtr ctConst,
++                               Section<ConstantArray<predict::CTConstantArrayType> >* ctConst,
+                                ServerStats& stats, rm_string *detail) const;
+ 
+     double getEMCorrectedProb(int32_t type, predict_key& key,
+                               predict_undiscretized_key& ukey,
+                               double baseprob,
+-                              SectionPtr ctConst,
++                              Section<ConstantArray<predict::CTConstantArrayType> >* ctConst,
+                               ServerStats& stats, rm_string *detail) const;
+ 
+     private:

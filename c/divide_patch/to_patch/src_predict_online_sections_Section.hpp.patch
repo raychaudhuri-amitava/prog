@@ -1,0 +1,195 @@
+Index: src/predict/online/sections/Section.hpp
+===================================================================
+--- src/predict/online/sections/Section.hpp	(revision 56548)
++++ src/predict/online/sections/Section.hpp	(working copy)
+@@ -27,121 +27,121 @@
+ typedef CommonSectionHeader const& CommonSectionHeaderRef;
+ typedef PredictConf const& PredictConfRef;
+ 
+-class Section {
++class EmptySection {
++    public: 
++    virtual void dump(std::ostream& out, bool isDumpHeader) = 0;
++};
+ 
++template<class ActualSection>
++class Section : public EmptySection {
++
+     public:
+     explicit Section(IdArrayConstPtr ptr, CommonSectionHeaderRef hdr) : fCache(ptr), fType(hdr){}
+ 
+-    virtual bool load(MemBlockType &mem, size_t &tillRead) = 0;
++    bool load(MemBlockType &mem, size_t &tillRead) {
++        return (static_cast<ActualSection*>(this))->load(mem, tillRead);
++    }
+ 
+     // Any function not needed by a section will be an inline no-op.
+ 
+     // Following are the three variations of getValue. Can't templatize virtual func :((
+     // Probability with undiscretized keys
+-    virtual bool getValue(predict_key& key,
+-                          predict_undiscretized_key const& ukey,
+-                          double& value,
+-                          ServerStats& stats,
+-                          rm_string *detail) const {
+-        (void)key; (void)ukey; (void)value;
+-        (void)stats; (void)detail;
+-        return false;
++    bool getValue(predict_key& key,
++                  predict_undiscretized_key const& ukey,
++                  double& value,
++                  ServerStats& stats,
++                  rm_string *detail) const {
++        return (static_cast<ActualSection*>(this))->getValue(key, ukey,
++                value, stats, detail);
+     }
+ 
+     //Probability with normal key only
+-    virtual bool getValue(predict_key& key,
+-                          double& value,
+-                          ServerStats& stats,
+-                          rm_string *detail) const {
+-        (void)key; (void)value;
+-        (void)stats; (void)detail;
+-        return false;
++    bool getValue(predict_key& key,
++                  double& value,
++                  ServerStats& stats,
++                  rm_string *detail) const {
++        return (static_cast<ActualSection*>(this))->getValue(key, value,
++                stats, detail);
+     }
+ 
+     //Get Modifier for external world.
+-    virtual bool getValue(predict_key& key,
+-                          double& value,
+-                          size_t *keypos,
+-                          size_t nkys,
+-                          ServerStats& stats,
+-                          rm_string *detail) const {
+-        (void)key; (void)value;
+-        (void)keypos, (void)nkys,
+-        (void)stats; (void)detail;
+-        return false;
++    bool getValue(predict_key& key,
++                  double& value,
++                  size_t *keypos,
++                  size_t nkys,
++                  ServerStats& stats,
++                  rm_string *detail) const {
++        return (static_cast<ActualSection*>(this))->getValue(key, value,
++                keypos, nkys, stats, detail);
+     }
+ 
+     //Learn Probability
+-    virtual bool getValue(predict_key& key,
+-                          double& value,
+-                          learning_status& learn_status,
+-                          ServerStats& stats,
+-                          rm_string *detail) const {
+-        (void)key; (void)value; (void)learn_status;
+-        (void)stats; (void)detail;
+-        return false;
++    bool getValue(predict_key& key,
++                  double& value,
++                  learning_status& learn_status,
++                  ServerStats& stats,
++                  rm_string *detail) const {
++        return (static_cast<ActualSection*>(this))->getValue(key,
++                value, learn_status, stats, detail);
+     }
+ 
+     //Throttle or not
+-    virtual bool getValue(predict_key& key,
+-                          bool& value, float prob,
+-                          ServerStats& stats,
+-                          rm_string *detail) const {
+-        (void)key; (void)value;
+-        (void)stats; (void)detail;
+-        return false;
++    bool getValue(predict_key& key,
++                  bool& value, float prob,
++                  ServerStats& stats,
++                  rm_string *detail) const {
++        return (static_cast<ActualSection*>(this))->getValue(key,
++                value, prob, stats, detail);
+     }
+ 
+     //Pearl Map, either pearlid or pub class.
+-    virtual bool getValue(mixed_id_t const& key,
+-                          mixed_id_t& value,
+-                          ServerStats& stats,
+-                          rm_string *detail) const {
+-        (void)key; (void)value;
+-        (void)stats; (void)detail;
+-        return false;
++    bool getValue(mixed_id_t const& key,
++                  mixed_id_t& value,
++                  ServerStats& stats,
++                  rm_string *detail) const {
++        return (static_cast<ActualSection*>(this))->getValue(key,
++                value, stats, detail);
+     }
+ 
+     //Discretized Attr.
+-    virtual bool getValue(attributes attr,
+-                          double discit,
+-                          mixed_id_t& value,
+-                          ServerStats& stats,
+-                          rm_string *detail) const {
+-        (void)attr; (void)discit; (void)value;
+-        (void)stats; (void)detail;
+-        return false;
++    bool getValue(attributes attr,
++                  double discit,
++                  mixed_id_t& value,
++                  ServerStats& stats,
++                  rm_string *detail) const {
++        return (static_cast<ActualSection*>(this))->getValue(attr,
++                discit, value, stats, detail);
+     }
+ 
+     // There is nothing to get the constants. For constant sections directly use them.
+-    virtual bool getValue(int32_t consType,
+-                          double& value) const {
+-        (void) consType; (void) value;
++    bool getValue(int32_t consType,
++                  double& value) const {
++        return (static_cast<ActualSection*>(this))->getValue(consType, value);
+     }
+ 
+     // This will be used by throttle section.
+-    virtual bool registerImpression(predict_key& key,
++    bool registerImpression(predict_key& key,
+             double amount, float prob,
+             ServerStats& stats) {
+-        (void)key; (void)amount; (void)prob,
+-        (void)stats;
+-        return false;
+-
++        return (static_cast<ActualSection*>(this))->registerImpression(key,
++                amount, prob, stats);
+     }
+ 
+     //Only throttle section will use reset.
+-    virtual void reset() {
+-        return; //NOP
++    void reset() {
++        (static_cast<ActualSection*>(this))->reset(); //NOP
+     }
+ 
+     // This will be used by the predict_dumper.
+-    virtual void dump(std::ostream& out, bool isDumpHeader) const = 0;
++    void dump(std::ostream& out, bool isDumpHeader) {
++        (static_cast<ActualSection*>(this))->dump(out, isDumpHeader);
++    }
+ 
+     InterimCache& getInterimCache() {
+         return fCache;
+     }
+ 
+-    virtual ~Section(){}
++    ~Section(){}
+ 
+     protected: // so that sections can directly use it.
+     InterimCache fCache;

@@ -1,0 +1,31 @@
+Index: src/predict/online/sections/ThrottleCacheVbt.hpp
+===================================================================
+--- src/predict/online/sections/ThrottleCacheVbt.hpp	(revision 56548)
++++ src/predict/online/sections/ThrottleCacheVbt.hpp	(working copy)
+@@ -26,19 +26,19 @@
+     using ThrottleCache<MEMPOOL>::dump;
+ 
+     // bool is for whether to throttle or not.
+-    virtual bool getValue(predict_key& key,
+-                          bool& value, float prob,
+-                          ServerStats& stats,
+-                          rm_string *detail) const;
++    bool getValue(predict_key& key,
++                  bool& value, float prob,
++                  ServerStats& stats,
++                  rm_string *detail) const;
+ 
+     // This will be used by throttle section.
+-    virtual bool registerImpression(predict_key& key,
++    bool registerImpression(predict_key& key,
+             double amount, float prob,
+             ServerStats& stats);
+ 
+-    virtual ~ThrottleCacheVbt();
++    ~ThrottleCacheVbt();
+ 
+-    virtual void reset();
++    void reset();
+ 
+     protected:
+ 

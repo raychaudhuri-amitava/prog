@@ -1,0 +1,511 @@
+Index: src/predict/online/predictors/Predictor.cpp
+===================================================================
+--- src/predict/online/predictors/Predictor.cpp	(revision 56559)
++++ src/predict/online/predictors/Predictor.cpp	(working copy)
+@@ -1,506 +1,6 @@
+ /* -*- mode: c++; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4 -*- */
+ /* vi: set expandtab shiftwidth=4 tabstop=4: */
+ 
+-#include "util/rm_random.hpp"
+ 
+ #include "Predictor.hpp"
+ 
+-#include "predict/online/sections/Section.hpp"
+-#include "predict/online/common/PredictMessages.hpp"
+-
+-#include <fcntl.h>
+-#include <unistd.h>
+-#include <stdlib.h>
+-#include <sys/types.h>
+-
+-
+-Predictor::Predictor(PredictConf const& conf, bool& iscreated) : fCache(NULL),
+-             fIsValid(false), fConf(conf){
+-    fSpec.setSpec()
+-            (section::type::GEN, section::gensubtype::CPC_LEARN_ARRAY)
+-            (section::type::GEN, section::gensubtype::DCPM_CONV_LEARN_ARRAY)
+-            (section::type::GEN, section::gensubtype::DCPM_CLICK_LEARN_ARRAY)
+-            (section::type::GEN, section::gensubtype::CPA_LEARN_ARRAY)
+-            (section::type::GEN, section::gensubtype::PEARL_PUBCLASS_MAP)
+-            (section::type::GEN, section::gensubtype::SECTION_PEARL_MAP)
+-            (section::type::GEN, section::gensubtype::SITE_PEARL_MAP)
+-            (section::type::GEN, section::gensubtype::VURL_PEARL_MAP)
+-            (section::type::GEN, section::gensubtype::PUB_PEARL_MAP)
+-            (section::type::GEN, section::gensubtype::GLOBAL_CONSTANTS, true)
+-            (section::type::CLICK, section::subtype::MODIFIER, true)
+-            (section::type::PCC, section::subtype::MODIFIER, true)
+-            (section::type::PVC, section::subtype::MODIFIER, true)
+-            (section::type::CLICK, section::subtype::GLOBAL_DISC, true)
+-            (section::type::PCC, section::subtype::GLOBAL_DISC, true)
+-            (section::type::PVC, section::subtype::GLOBAL_DISC, true)
+-            ;
+-    if(fConf.IsThrottle()) {
+-        if(fConf.IsVBTThrottle()) {
+-            if(fConf.IsClickThrottle()){
+-                fSpec.setSpec()
+-                        (section::type::CLICK, section::subtype::THROTTLE_CACHE_VBT);
+-            }
+-            if(fConf.IsPccThrottle()) {
+-                fSpec.setSpec()
+-                        (section::type::PCC, section::subtype::THROTTLE_CACHE_VBT);
+-            }
+-            if(fConf.IsPvcThrottle()) {
+-                fSpec.setSpec()
+-                        (section::type::PVC, section::subtype::THROTTLE_CACHE_VBT);
+-            }
+-        } else {
+-            if(fConf.IsClickThrottle()){
+-                fSpec.setSpec()
+-                        (section::type::CLICK, section::subtype::THROTTLE_CACHE);
+-            }
+-            if(fConf.IsPccThrottle()) {
+-                fSpec.setSpec()
+-                        (section::type::PCC, section::subtype::THROTTLE_CACHE);
+-            }
+-            if(fConf.IsPvcThrottle()) {
+-                fSpec.setSpec()
+-                        (section::type::PVC, section::subtype::THROTTLE_CACHE);
+-            }
+-        }
+-    }
+-
+-    fSpec.UseHash(conf.UseHash());
+-
+-    fVbt.clickMult = conf.ClickMult();
+-    fVbt.pccMult = conf.PccMult();
+-    fVbt.pvcMult = conf.PvcMult();
+-    iscreated = readVbtFiles();
+-}
+-
+-Predictor::Predictor(PredictCache *cache) : fCache(cache), fIsValid(true){
+-    fSpec.setSpec()
+-            (section::type::GEN, section::gensubtype::CPC_LEARN_ARRAY)
+-            (section::type::GEN, section::gensubtype::DCPM_CONV_LEARN_ARRAY)
+-            (section::type::GEN, section::gensubtype::DCPM_CLICK_LEARN_ARRAY)
+-            (section::type::GEN, section::gensubtype::CPA_LEARN_ARRAY)
+-            (section::type::GEN, section::gensubtype::PEARL_PUBCLASS_MAP)
+-            (section::type::GEN, section::gensubtype::SECTION_PEARL_MAP)
+-            (section::type::GEN, section::gensubtype::SITE_PEARL_MAP)
+-            (section::type::GEN, section::gensubtype::VURL_PEARL_MAP)
+-            (section::type::GEN, section::gensubtype::PUB_PEARL_MAP)
+-            (section::type::GEN, section::gensubtype::GLOBAL_CONSTANTS, true)
+-            (section::type::CLICK, section::subtype::THROTTLE_CACHE)
+-            (section::type::PCC, section::subtype::THROTTLE_CACHE)
+-            (section::type::PVC, section::subtype::THROTTLE_CACHE)
+-            (section::type::CLICK, section::subtype::MODIFIER, true)
+-            (section::type::PCC, section::subtype::MODIFIER, true)
+-            (section::type::PVC, section::subtype::MODIFIER, true)
+-            (section::type::CLICK, section::subtype::GLOBAL_DISC, true)
+-            (section::type::PCC, section::subtype::GLOBAL_DISC, true)
+-            (section::type::PVC, section::subtype::GLOBAL_DISC, true)
+-            ;
+-}
+-
+-
+-bool Predictor::refreshCache(PredictConf const& conf) {
+-    bool ret = false;
+-    PredictCache *pCache = new PredictCache();
+-    if(pCache) {
+-        ret = pCache->load(conf, fSpec);
+-        if(ret) {
+-            PredictScopedWriteLock lock(fCacheLock);
+-            PredictScopedWriteLock thlock(fThrottleLock);
+-            delete fCache;
+-            fCache = pCache;
+-            resetThrottle(false);
+-            fIsValid = true;
+-            return true;
+-        } else {
+-            delete pCache;
+-        }
+-        pCache = NULL;
+-    }
+-    return ret;
+-}
+-
+-bool Predictor::destroyCache() {
+-    PredictScopedWriteLock lock(fCacheLock);
+-    if(fConf.IsThrottle()) {
+-        PredictScopedWriteLock thlock(fThrottleLock);
+-        ThrottleMemPool::fPool->reset();
+-    }
+-    delete fCache;
+-    fCache = NULL;
+-    fIsValid = false;
+-    return true;
+-}
+-
+-uint64_t Predictor::getPearl(uint64_t section_id, site_id_t site_id,
+-        uint32_t vurl_id, entity_id_t publisher_id, rm_string *detail) const {
+-
+-    uint64_t pearl_id = 0;
+-    PredictScopedReadLock lock(fCacheLock);    
+-    //try using section pearl
+-    if(getPearlFromMap(section::type::GEN, section::gensubtype::SECTION_PEARL_MAP,
+-            section_id, pearl_id, detail)) {
+-        rmstr_sprintf(detail, PredictTrace::MESSAGE_36, fConf.CachePrefix(),
+-                "section", section_id, pearl_id);
+-        return pearl_id;
+-    }
+-
+-    //try using site pearl
+-    if(getPearlFromMap(section::type::GEN, section::gensubtype::SITE_PEARL_MAP,
+-            site_id, pearl_id, detail)) {
+-        rmstr_sprintf(detail, PredictTrace::MESSAGE_36, fConf.CachePrefix(),
+-                "site", site_id, pearl_id);
+-        return pearl_id;
+-    }
+-
+-    //try using vurl pearl
+-    if(getPearlFromMap(section::type::GEN, section::gensubtype::VURL_PEARL_MAP,
+-            vurl_id, pearl_id, detail)) {
+-        rmstr_sprintf(detail, PredictTrace::MESSAGE_36, fConf.CachePrefix(),
+-                "vurl", vurl_id, pearl_id);
+-        return pearl_id;
+-    }
+-
+-    //try using publisher pearl
+-    if(getPearlFromMap(section::type::GEN, section::gensubtype::PUB_PEARL_MAP,
+-            publisher_id, pearl_id, detail)) {
+-        rmstr_sprintf(detail, PredictTrace::MESSAGE_36, fConf.CachePrefix(),
+-                "publisher", publisher_id, pearl_id);
+-        return pearl_id;
+-    }
+-
+-    return 0; //default pearl
+-}
+-
+-
+-double Predictor::getClickModifier(predict_key& key,
+-        rm_string *detail) const {
+-
+-    if(!fConf.UseModifier()) {
+-        return 1.0;
+-    }
+-
+-    PredictScopedReadLock lock(fCacheLock);
+-
+-    SubSecTypeVecPtrRef sections = fCache->getSection(section::type::CLICK,
+-            section::subtype::MODIFIER);
+-    if(!(sections)) {
+-        return 1.0;
+-    }
+-    size_t key1[2];
+-    key1[0] = FREQUENCY_BUCKET;
+-    key1[1] = RECENCY_BUCKET;
+-
+-    int32_t siz = (*sections).size();
+-    double prob_mod = 1.0;
+-    ServerStats stats;
+-    for(int32_t i = 0; i < siz; ++i) {
+-        if(((*sections)[i])->getValue(key, prob_mod, &(key1[0]), 2, stats, detail)) {
+-            break;
+-        } else {
+-            prob_mod = 1.0;
+-        }
+-    }
+-    return prob_mod;
+-}
+-
+-double Predictor::getConvModifier(predict_key& key,
+-        bool is_post_view, rm_string *detail) const {
+-
+-    if(!fConf.UseModifier()) {
+-        return 1.0;
+-    }
+-
+-    return 1.0;
+-}
+-
+-bool Predictor::clickThrottle(predict_key& key, float prob,
+-        ServerStats& stats, rm_string *detail) const {
+-    if(fConf.IsThrottle() &&
+-       fConf.IsClickThrottle()) {
+-        int32_t subtype = 0;
+-        if(fConf.IsVBTThrottle()) {
+-            subtype = section::subtype::THROTTLE_CACHE_VBT;
+-        } else {
+-            subtype = section::subtype::THROTTLE_CACHE;
+-        }
+-        PredictScopedReadLock lock(fThrottleLock);
+-        SectionPtr sec = fCache->getSection(
+-                section::type::CLICK, subtype, 0);
+-
+-        bool isThrottle = false;
+-
+-        if(!sec->getValue(key, isThrottle, prob, stats, detail)) {
+-            return false;
+-        }
+-        return isThrottle;
+-    }
+-    return false; //don't do anything.
+-}
+-
+-bool Predictor::convThrottle(predict_key& key,
+-        bool is_post_view,
+-        float prob,
+-        ServerStats& stats,
+-        rm_string *detail) const {
+-
+-    int32_t type = 0;
+-    bool dothrt = true;
+-    if(is_post_view){
+-        dothrt = fConf.IsThrottle() && fConf.IsPvcThrottle();
+-        type =  section::type::PVC;
+-    } else {
+-        dothrt = fConf.IsThrottle() && fConf.IsPccThrottle();
+-        type = section::type::PCC;
+-    }
+-
+-    if(dothrt) {
+-        int32_t subtype = 0;
+-        if(fConf.IsVBTThrottle()) {
+-            subtype = section::subtype::THROTTLE_CACHE_VBT;
+-        } else {
+-            subtype = section::subtype::THROTTLE_CACHE;
+-        }
+-
+-        PredictScopedReadLock lock(fThrottleLock);
+-        SectionPtr sec = fCache->getSection(type, subtype, 0);
+-
+-        bool isThrottle = false;
+-
+-        if(!sec->getValue(key, isThrottle, prob, stats, detail)) {
+-            return false;
+-        }
+-        return isThrottle;
+-    }
+-    return false;
+-}
+-
+-bool Predictor::registerClickImpression(predict_key& key,
+-            double amount, float prob,
+-            ServerStats& stats) {
+-    if(fConf.IsThrottle() &&
+-         fConf.IsClickThrottle()) {
+-        int32_t subtype = 0;
+-        if(fConf.IsVBTThrottle()) {
+-            subtype = section::subtype::THROTTLE_CACHE_VBT;
+-        } else {
+-            subtype = section::subtype::THROTTLE_CACHE;
+-        }
+-        PredictScopedWriteLock thlock(fThrottleLock);
+-        SectionPtr sec = fCache->getSection(
+-                section::type::CLICK, subtype, 0);
+-
+-        return sec->registerImpression(key,
+-                amount, prob, stats);
+-    }
+-    return true;
+-}
+-
+-bool Predictor::registerConvImpression(predict_key& key,
+-            bool is_post_view, double amount, float prob,
+-            ServerStats& stats) {
+-    int32_t type = 0;
+-    bool dothrt = true;
+-    if(is_post_view){
+-        dothrt = fConf.IsThrottle() && fConf.IsPvcThrottle();
+-        type =  section::type::PVC;
+-    } else {
+-        dothrt = fConf.IsThrottle() && fConf.IsPccThrottle();
+-        type = section::type::PCC;
+-    }
+-
+-    if(dothrt) {
+-        int32_t subtype = 0;
+-        if(fConf.IsVBTThrottle()) {
+-            subtype = section::subtype::THROTTLE_CACHE_VBT;
+-        } else {
+-            subtype = section::subtype::THROTTLE_CACHE;
+-        }
+-
+-        PredictScopedWriteLock thlock(fThrottleLock);
+-        SectionPtr sec = fCache->getSection(type, subtype, 0);
+-
+-        return sec->registerImpression(key,
+-                amount, prob, stats);
+-    }
+-    return true;
+-}
+-
+-
+-bool Predictor::readVbtFiles() {
+-
+-    if(!fConf.IsVBTThrottle()) {
+-        return true;
+-    }
+-    allocateVbt();
+-    int ps_fd = open(fConf.PoissonCdfTab().c_str(), O_RDONLY);
+-    int z_fd = open(fConf.ZTab().c_str(), O_RDONLY);
+-    if ((ps_fd < 0) || (z_fd < 0)) {
+-        int e = errno;
+-        util_error(LOG_ERR, "Predictor Poisson table : Can't open either '%s' or '%s': %s\n",
+-                fConf.PoissonCdfTab().c_str(), fConf.ZTab().c_str(), errno_string(e).c_str());
+-        if(ps_fd >= 0) close(ps_fd);
+-        if(z_fd >= 0) close(z_fd);
+-        return false;
+-    }
+-
+-    for(size_t i=0;i<MAX_SERVES;i++){
+-        for(size_t j=0;j<MAX_LAMBDAS;j++) {
+-           //Read one double at a time.
+-           if(!predict::Utils::safe_read(ps_fd, (fVbt.poisson_cdf_tab)[j][i])) {
+-               close(ps_fd);
+-               util_error(LOG_ERR, "The CDF initializer file is not read completely. Be ready to get wrong probability.");
+-               return false;
+-           }
+-        }
+-    }
+-    close(ps_fd);
+-
+-    for(size_t i=0;i<MAX_NORM_CHART;i++) {
+-        //Read one double at a time.
+-        if(!predict::Utils::safe_read(z_fd, (fVbt.z_tab)[i])) {
+-            close(z_fd);
+-            util_error(LOG_ERR, "The Z table file is not read completely. Be ready to get wrong probability.");
+-            return false;
+-        }
+-    }
+-    close(z_fd);
+-    return true;
+-}
+-
+-void Predictor::allocateVbt() {
+-    rm_random_init();
+-    if(fVbt.poisson_cdf_tab == NULL) {
+-        fVbt.poisson_cdf_tab = new double*[MAX_LAMBDAS];
+-        for(size_t i = 0; i < MAX_LAMBDAS; i++) {
+-            (fVbt.poisson_cdf_tab)[i] = new double[MAX_SERVES];
+-        }
+-    }
+-    if(fVbt.z_tab == NULL) {
+-        fVbt.z_tab = new double[MAX_NORM_CHART];
+-    }
+-    fSpec.VbtConfig(fVbt); // set now, since allocation is done.
+-}
+-
+-void Predictor::destroyVbt() {
+-    if(fVbt.poisson_cdf_tab != NULL) {
+-        for(size_t i = 0; i < MAX_LAMBDAS; i++) {
+-           if((fVbt.poisson_cdf_tab)[i] != NULL) {
+-               delete [] (fVbt.poisson_cdf_tab)[i];
+-               (fVbt.poisson_cdf_tab)[i] = NULL;
+-           }
+-        }
+-        delete [] fVbt.poisson_cdf_tab;
+-        fVbt.poisson_cdf_tab = NULL;
+-    }
+-    if(fVbt.z_tab != NULL) {
+-        delete [] fVbt.z_tab;
+-        fVbt.z_tab = NULL;
+-    }
+-    fSpec.VbtConfig(fVbt); // reset the vbt things.
+-}
+-
+-void Predictor::resetThrottleInt() {
+-    if(fConf.IsThrottle()) {
+-        ThrottleMemPool::fPool->reset();
+-        if(fConf.IsVBTThrottle()) {
+-            if(fConf.IsClickThrottle()){
+-                SectionPtr cl_vbtSec = fCache->getSection(section::type::CLICK, section::subtype::THROTTLE_CACHE_VBT, 0);
+-                cl_vbtSec->reset();
+-            }
+-            if(fConf.IsPccThrottle()) {
+-                SectionPtr pcc_vbtSec = fCache->getSection(section::type::PCC, section::subtype::THROTTLE_CACHE_VBT, 0);
+-                pcc_vbtSec->reset();
+-            }
+-            if(fConf.IsPvcThrottle()) {
+-                SectionPtr pvc_vbtSec = fCache->getSection(section::type::PVC, section::subtype::THROTTLE_CACHE_VBT, 0);
+-                pvc_vbtSec->reset();
+-            }
+-        } else {
+-            if(fConf.IsClickThrottle()){
+-                SectionPtr cl_thSec = fCache->getSection(section::type::CLICK, section::subtype::THROTTLE_CACHE, 0);
+-                cl_thSec->reset();
+-            }
+-            if(fConf.IsPccThrottle()) {
+-                SectionPtr pcc_thSec = fCache->getSection(section::type::PCC, section::subtype::THROTTLE_CACHE, 0);
+-                pcc_thSec->reset();
+-            }
+-            if(fConf.IsPvcThrottle()) {
+-                SectionPtr pvc_thSec = fCache->getSection(section::type::PVC, section::subtype::THROTTLE_CACHE, 0);
+-                pvc_thSec->reset();
+-            }
+-        }
+-    }
+-}
+-
+-void Predictor::resetThrottle(bool isNotLocked) {
+-    if(isNotLocked) {
+-        PredictScopedWriteLock thlock(fThrottleLock);
+-        resetThrottleInt();
+-    } else {
+-        resetThrottleInt();
+-    }
+-}
+-
+-// Caller should take care of the locks.
+-double Predictor::getClickmodifierInt(predict_key& key,
+-        ServerStats& stats,
+-        rm_string *detail) const {
+-
+-    if(!fConf.UseModifier()) {
+-        return 1.0;
+-    }
+-
+-    SubSecTypeVecPtrRef sections = fCache->getSection(section::type::CLICK,
+-            section::subtype::MODIFIER);
+-    if(!(sections)) {
+-        return 1.0;
+-    }
+-    int32_t siz = (*sections).size();
+-
+-    double mod = 1.0;
+-    double prob_mod = 1.0;
+-
+-    for(int32_t i = 0; i < siz; ++i) {
+-        mod = 1.0;
+-        if(((*sections)[i])->getValue(key, mod, stats, detail)) {
+-            prob_mod *= mod;
+-        }
+-    }
+-    return prob_mod;
+-}
+-
+-// Caller should take care of the locks.
+-double Predictor::getConvmodifierInt(predict_key& key,
+-        bool is_post_view,
+-        ServerStats& stats,
+-        rm_string *detail) const {
+-
+-    if(!fConf.UseModifier()) {
+-        return 1.0;
+-    }
+-
+-    int32_t type = 0;
+-    if(is_post_view){
+-        type =  section::type::PVC;
+-    } else {
+-        type = section::type::PCC;
+-    }
+-
+-    SubSecTypeVecPtrRef sections = fCache->getSection(type,
+-            section::subtype::MODIFIER);
+-    if(!(sections)) {
+-        return 1.0;
+-    }
+-    int32_t siz = (*sections).size();
+-
+-    double mod = 1.0;
+-    double prob_mod = 1.0;
+-
+-    for(int32_t i = 0; i < siz; ++i) {
+-        mod = 1.0;
+-        if(((*sections)[i])->getValue(key, mod, stats, detail)) {
+-            prob_mod *= mod;
+-        }
+-    }
+-    return prob_mod;
+-}
+-

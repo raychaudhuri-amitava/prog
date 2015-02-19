@@ -1,0 +1,77 @@
+Index: src/predict/online/predictors/DTCTPredictor.hpp
+===================================================================
+--- src/predict/online/predictors/DTCTPredictor.hpp	(revision 56548)
++++ src/predict/online/predictors/DTCTPredictor.hpp	(working copy)
+@@ -11,27 +11,27 @@
+ #include "util/ObjectIdType.hpp"
+ #include "predict/online/common/CommonConstant.hpp"
+ 
+-class DTCTPredictor : public Predictor {
++class DTCTPredictor : public Predictor<DTCTPredictor> {
+ 
+     public:
+ 
+-    using Predictor::refreshCache;
+-    using Predictor::isValid;
+-    using Predictor::destroyCache;
+-    using Predictor::getPredictConf;
+-    using Predictor::getPearl;
+-    using Predictor::getPubclass;
+-    using Predictor::getCacheVersion;
+-    using Predictor::getClickModifier;
+-    using Predictor::getConvModifier;
+-    using Predictor::clickThrottle;
+-    using Predictor::convThrottle;
+-    using Predictor::registerClickImpression;
+-    using Predictor::registerConvImpression;
+-    using Predictor::getCPALearnProb;
+-    using Predictor::getCpcLearnProb;
+-    using Predictor::getDcpmLearnProb;
+-    using Predictor::getDcpmClickLearnProb;
++    using Predictor<DTCTPredictor>::refreshCache;
++    using Predictor<DTCTPredictor>::isValid;
++    using Predictor<DTCTPredictor>::destroyCache;
++    using Predictor<DTCTPredictor>::getPredictConf;
++    using Predictor<DTCTPredictor>::getPearl;
++    using Predictor<DTCTPredictor>::getPubclass;
++    using Predictor<DTCTPredictor>::getCacheVersion;
++    using Predictor<DTCTPredictor>::getClickModifier;
++    using Predictor<DTCTPredictor>::getConvModifier;
++    using Predictor<DTCTPredictor>::clickThrottle;
++    using Predictor<DTCTPredictor>::convThrottle;
++    using Predictor<DTCTPredictor>::registerClickImpression;
++    using Predictor<DTCTPredictor>::registerConvImpression;
++    using Predictor<DTCTPredictor>::getCPALearnProb;
++    using Predictor<DTCTPredictor>::getCpcLearnProb;
++    using Predictor<DTCTPredictor>::getDcpmLearnProb;
++    using Predictor<DTCTPredictor>::getDcpmClickLearnProb;
+ 
+     DTCTPredictor(PredictConf const& conf, bool& iscreated);
+ 
+@@ -56,8 +56,8 @@
+ 
+     protected:
+ 
+-    using Predictor::getClickmodifierInt;
+-    using Predictor::getConvmodifierInt;
++    using Predictor<DTCTPredictor>::getClickmodifierInt;
++    using Predictor<DTCTPredictor>::getConvmodifierInt;
+ 
+ 
+     private: //forbidden
+@@ -67,13 +67,13 @@
+     private:
+     double getGLMMBaselineProb(int32_t type, predict_key& key,
+                                predict_undiscretized_key& ukey,
+-                               SectionPtr ctConst,
++                               Section<ConstantArray<predict::CTConstantArrayType> >* ctConst,
+                                ServerStats& stats, rm_string *detail) const;
+ 
+     double getEMCorrectedProb(int32_t type, predict_key& key,
+                               predict_undiscretized_key& ukey,
+                               double baseprob,
+-                              SectionPtr ctConst,
++                              Section<ConstantArray<predict::CTConstantArrayType> >* ctConst,
+                               ServerStats& stats, rm_string *detail) const;
+ 
+     private:

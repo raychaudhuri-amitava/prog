@@ -1,0 +1,87 @@
+Index: src/predict/online/predictcache/PredictCache.hpp
+===================================================================
+--- src/predict/online/predictcache/PredictCache.hpp	(revision 56548)
++++ src/predict/online/predictcache/PredictCache.hpp	(working copy)
+@@ -16,31 +16,19 @@
+ #include "predict/online/common/SectionTypes.hpp"
+ #include "predict/online/configs/PredictConf.hpp"
+ #include "predict/online/configs/PredictorSpec.hpp"
++#include "predict/online/common/SectionDefHdr.hpp"
+ 
+ #include "CacheIterator.hpp"
+ 
+ class PredictCache {
+ 
+-    private:
+-
+-    typedef std::vector<SubSecTypeVecPtr> SectionSubtypeVec;
+-
+-    typedef std::vector<MemBlockType> MemBlockVec;
+-
+-    template<class SEC>
+-    struct AnySubSecVecPtr {
+-        typedef boost::shared_ptr<SEC> AnySectionPtr;
+-        typedef std::vector<AnySectionPtr> vec_type;
+-        typedef boost::shared_ptr<vec_type> type;
+-    };
+-    
++    public:
+     template<size_t MAXTYPES>
+     struct SectionContainer {
+-        typedef boost::array<SectionSubtypeVec, MAXTYPES> type;
++        typedef SubSecTypeVecPtr type[MAXTYPES];
+     };
+     typedef SectionContainer<section::type::MAX_TYPES>::type SectionElements;
+ 
+-
+     public:
+ 
+     typedef CacheIterator<SectionElements, section::type::MAX_TYPES> iterator;
+@@ -55,7 +43,7 @@
+ 
+     const char* getCacheVersion() const;
+ 
+-    SubSecTypeVecPtrRef getSection(int32_t sec_type, int32_t sec_sub_type);
++    SubSecTypeVecRef getSection(int32_t sec_type, int32_t sec_sub_type);
+     
+     SectionPtr getSection(int32_t sec_type, int32_t sec_sub_type, int32_t sec_pos);
+ 
+@@ -102,17 +90,18 @@
+     private:
+ 
+     //Implement these.
+-
+     bool loadHeader(int fd);
+ 
+     bool validateHeader(PredictorType const& tp, size_t cacheSize, bool checkSize);
+ 
++    bool loadIndex(int fd, bool validateSpec, size_t & leftRead);
++
+     bool loadIdArray(int fd, size_t & left_read);
+ 
+     bool loadSections(int fd, bool valSpec, size_t & left_read);
+ 
+     bool allocateWholeSection(int fd, CommonSectionHeaderPtr hdr, size_t & left_read, 
+-                              bool& toSkip, SubSecTypeVecPtrRef section);
++                              bool& toSkip, SubSecTypeVecRef section);
+ 
+     Section* allocateSpecificSection(bool allocateMode,
+             MemBlockType &mem, CommonSectionHeaderPtr hdr, bool& toSkip, size_t &tillRead); //Switch case will be in it.
+@@ -121,11 +110,15 @@
+ 
+     private:
+     GlobalCacheHeader* fHeader;
++    CacheIndexPtr fCacheIndex;
++    size_t fTillReadUB;
+     IdArrayPtr fIdArray;
+-    MemBlockVec fMemory;
+-    SectionContainer<section::type::MAX_TYPES>::type fSections;
++    MemBlockType fMemory;
+     PredictConf fConf;
+     PredictorSpec fSpec;
++
++    public:
++    SectionContainer<section::type::MAX_TYPES>::type fSections;
+ };
+ 
+ #include "PredictCache.ipp"

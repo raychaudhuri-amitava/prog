@@ -1,0 +1,5 @@
+Solving n-queens for n = 1
++_h_queen(1,0,[  0  ])
++_h_queen(1,1,[  0  ])
+-_h_queen(1,1,[  0  ])
+-_h_queen(1,0,[  0  ])

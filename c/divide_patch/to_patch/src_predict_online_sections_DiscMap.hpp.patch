@@ -1,0 +1,47 @@
+Index: src/predict/online/sections/DiscMap.hpp
+===================================================================
+--- src/predict/online/sections/DiscMap.hpp	(revision 56548)
++++ src/predict/online/sections/DiscMap.hpp	(working copy)
+@@ -13,7 +13,7 @@
+ #include "predict/online/common/GlobalHeader.hpp"
+ #include "predict/online/common/CommonPredictTypes.hpp"
+ 
+-class DiscMap : public Section {
++class DiscMap : public Section<DiscMap> {
+ 
+     private:
+     typedef CommonSizeHeader::type HeaderEl;
+@@ -23,21 +23,25 @@
+ 
+     public:
+     explicit DiscMap(IdArrayConstPtr ptr, CommonSectionHeaderRef hdr) :
+-             Section(ptr, hdr), fheader(NULL){
++             Section<DiscMap>(ptr, hdr), fheader(NULL){
+         memset(fIsOffPresent, 0, MAX_NUM_ATTR*sizeof(size_t));
+     }
+ 
+-    virtual bool load(MemBlockType &mem, size_t &tillRead);
++    bool load(MemBlockType &mem, size_t &tillRead);
+ 
+     // mixed_id_t will give the discretized value for the key
+-    virtual bool getValue(attributes attr,
+-                          double discit,
+-                          mixed_id_t& value,
+-                          ServerStats& stats,
+-                          rm_string *detail) const;
++    bool getValue(attributes attr,
++                  double discit,
++                  mixed_id_t& value,
++                  ServerStats& stats,
++                  rm_string *detail) const;
+ 
+-    virtual void dump(std::ostream& out, bool isDumpHeader) const;
++    void dump(std::ostream& out, bool isDumpHeader) const;
+ 
++    protected:
++    using Section<DiscMap>::fCache;
++    using Section<DiscMap>::fType;
++
+     private:
+     uint64_t fIsOffPresent[MAX_NUM_ATTR];
+     Container fContainer;

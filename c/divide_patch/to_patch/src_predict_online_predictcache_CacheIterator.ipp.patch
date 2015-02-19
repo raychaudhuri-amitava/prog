@@ -1,0 +1,128 @@
+Index: src/predict/online/predictcache/CacheIterator.ipp
+===================================================================
+--- src/predict/online/predictcache/CacheIterator.ipp	(revision 56548)
++++ src/predict/online/predictcache/CacheIterator.ipp	(working copy)
+@@ -6,6 +6,8 @@
+ #ifndef __CACHE_ITERATOR_IPP_
+ #define __CACHE_ITERATOR_IPP_
+ 
++#include "predict/online/common/SectionTypes.hpp"
++
+ template<class Container, int32_t N_DIM1>
+ CacheIterator<Container, N_DIM1>::CacheIterator(Container* ptr, int32_t tp)
+                                  : fsecs(ptr), fsubtp(0), ftmpi(0){
+@@ -21,10 +23,16 @@
+                                  : fsecs(ptr), ftmpi(0) {
+     if(tp < N_DIM1) {
+         ftp = tp;
+-        if(sbtp < (*fsecs)[ftp].size()) {
++        int32_t siz = 0;
++        if(ftp == section::type::GEN) {
++            siz = section::gensubtype::MAX_GENSUBTYPES;
++        } else {
++            siz = section::subtype::MAX_SUBTYPES;
++        }
++        if(sbtp < siz) {
+             fsubtp = sbtp;
+         } else {
+-            fsubtp = (*fsecs)[ftp].size();
++            fsubtp = siz;
+         }
+     } else {
+         ftp = N_DIM1;
+@@ -37,16 +45,22 @@
+                                  : fsecs(ptr) {
+     if(tp < N_DIM1) {
+         ftp = tp;
+-        if(sbtp < (*fsecs)[ftp].size()) {
++        int32_t siz = 0;
++        if(ftp == section::type::GEN) {
++            siz = section::gensubtype::MAX_GENSUBTYPES;
++        } else {
++            siz = section::subtype::MAX_SUBTYPES;
++        }
++        if(sbtp < siz) {
+             fsubtp = sbtp;
+-            if(((*fsecs)[ftp][fsubtp]) && 
+-               (pos < (*fsecs)[ftp][fsubtp]->size())) {
++            if((((*fsecs)[ftp][fsubtp]).no_subsecs > 0) &&
++               (pos < ((*fsecs)[ftp][fsubtp]).no_subsecs)) {
+                 ftmpi = pos;
+             }else {
+-                ftmpi = (*fsecs)[ftp][fsubtp] ? (*fsecs)[ftp][fsubtp]->size() : 0;
++                ftmpi = ((*fsecs)[ftp][fsubtp]).no_subsecs > 0 ? ((*fsecs)[ftp][fsubtp]).no_subsecs : 0;
+             }
+         } else {
+-            fsubtp = (*fsecs)[ftp].size();
++            fsubtp = siz;
+             ftmpi = 0;
+         }
+     }else {
+@@ -61,12 +75,18 @@
+ CacheIterator<Container, N_DIM1>& CacheIterator<Container, N_DIM1>::operator++() {
+ 
+     if(ftp < N_DIM1) {
+-        if(((*fsecs)[ftp][fsubtp]) &&
+-            (ftmpi < (*fsecs)[ftp][fsubtp]->size())) { //check IIIrd dim
++        if((((*fsecs)[ftp][fsubtp]).no_subsecs > 0) &&
++            (ftmpi < ((*fsecs)[ftp][fsubtp]).no_subsecs)) { //check IIIrd dim
+             ftmpi++;
+         } else {
+             ftmpi = 0;
+-            if(fsubtp < ((*fsecs)[ftp]).size()) { //check IInd dim
++            int32_t siz = 0;
++            if(ftp == section::type::GEN) {
++                siz = section::gensubtype::MAX_GENSUBTYPES;
++            } else {
++                siz = section::subtype::MAX_SUBTYPES;
++            }
++            if(fsubtp < siz) { //check IInd dim
+                 fsubtp++;
+             } else { //check Ist dim
+                 fsubtp = 0;
+@@ -105,14 +125,20 @@
+ template<class Container, int32_t N_DIM1>
+ inline SectionPtr CacheIterator<Container, N_DIM1>::operator*() {
+     if(ftp < N_DIM1) {
+-        if((fsubtp < ((*fsecs)[ftp]).size()) && 
+-           ((*fsecs)[ftp][fsubtp]) &&
+-           (ftmpi >= (*fsecs)[ftp][fsubtp]->size())) { //check IIIrd dim
++        int32_t siz = 0;
++        if(ftp == section::type::GEN) {
++            siz = section::gensubtype::MAX_GENSUBTYPES;
++        } else {
++            siz = section::subtype::MAX_SUBTYPES;
++        }
++        if((fsubtp < siz) &&
++           (((*fsecs)[ftp][fsubtp]).no_subsecs > 0) &&
++           (ftmpi >= ((*fsecs)[ftp][fsubtp]).no_subsecs)) { //check IIIrd dim
+             ftmpi = 0;
+             fsubtp++;
+         }
+-        if((*fsecs)[ftp][fsubtp] &&
+-           (fsubtp >= ((*fsecs)[ftp]).size())) { //check IInd dim
++        if((((*fsecs)[ftp][fsubtp]).no_subsecs > 0) &&
++           (fsubtp >= ((*fsecs)[ftp][fsubtp]).no_subsecs)) { //check IInd dim
+             ftmpi = 0;
+             fsubtp = 0;
+             ftp++;
+@@ -121,15 +147,15 @@
+             ftmpi = 0;
+             fsubtp = 0;
+             ftp = N_DIM1;
+-            return SectionPtr();
++            return NULL;
+         }
+     
+-        if((*fsecs)[ftp][fsubtp]) {
+-            return (*((*fsecs)[ftp][fsubtp]))[ftmpi];
++        if(((*fsecs)[ftp][fsubtp]).no_subsecs > ftmpi) {
++            return (((*fsecs)[ftp][fsubtp]).sub_secs)[ftmpi];
+         }
+     }
+ 
+-    return SectionPtr();
++    return NULL;
+ }
+ 
+ 

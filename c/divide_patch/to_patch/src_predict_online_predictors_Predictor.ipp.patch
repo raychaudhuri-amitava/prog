@@ -1,0 +1,632 @@
+Index: src/predict/online/predictors/Predictor.ipp
+===================================================================
+--- src/predict/online/predictors/Predictor.ipp	(revision 56548)
++++ src/predict/online/predictors/Predictor.ipp	(working copy)
+@@ -6,39 +6,49 @@
+ #ifndef __PREDICTOR_IPP_
+ #define __PREDICTOR_IPP_
+ 
+-#include "predict/online/sections/Section.hpp"
++#include <fcntl.h>
++#include <unistd.h>
++#include <stdlib.h>
++#include <sys/types.h>
+ 
+-inline const char* Predictor::getCacheVersion() const {
+-    PredictScopedReadLock lock(fCacheLock);
++#include "util/rm_random.hpp"
++
++#include "predict/online/common/SectionDefHdr.hpp"
++#include "predict/online/sections/all.hpp"
++#include "predict/online/common/PredictMessages.hpp"
++
++template<class ActualPredictor>
++inline const char* Predictor<ActualPredictor>::getCacheVersion() const {
+     return fCache->getCacheVersion();
+ }
+ 
+-inline uint64_t Predictor::getPubclass(uint64_t pearl_id) const {
++template<class ActualPredictor>
++inline uint64_t Predictor<ActualPredictor>::getPubclass(uint64_t pearl_id) const {
+     uint64_t pub_class_id = 0;
+     ServerStats stats;
+-    PredictScopedReadLock lock(fCacheLock);
+-    SectionPtr sections = fCache->getSection(
+-            section::type::GEN, section::gensubtype::PEARL_PUBCLASS_MAP, 0);
++    Section<PubClassMap>* sections = ((fCache->fSections)[section::type::GEN][section::gensubtype::PEARL_PUBCLASS_MAP]).sub_secs[0];
+     if(sections->getValue(pearl_id, pub_class_id, stats, NULL)) {
+         return pub_class_id;
+     }
+     return 0;
+ }
+ 
+-inline bool Predictor::getPearlFromMap(int32_t type, int32_t subtype,
++template<class ActualPredictor>
++inline bool Predictor<ActualPredictor>::getPearlFromMap(int32_t type, int32_t subtype,
+         mixed_id_t id, uint64_t &pearl_id, rm_string *detail) const {
+     ServerStats stats;
+-    SectionPtr sections = fCache->getSection(type, subtype, 0);
++    Section<PearlMap<pearl_map_element> >* sections = ((fCache->fSections)[type][subtype]).sub_secs[0];
+     return sections->getValue(id, pearl_id, stats, detail);
+ }
+ 
+-inline float Predictor::getLearnProb(predict_key& key,
++template<class ActualPredictor>
++template<typename LEARNKEY>
++inline float Predictor<ActualPredictor>::getLearnProb(predict_key& key,
+             int32_t type, int32_t subtype,
+             learning_status& learn_status,
+             ServerStats& stats,
+             rm_string *detail) const {
+-    PredictScopedReadLock lock(fCacheLock);
+-    SectionPtr sec = fCache->getSection(type, subtype, 0);
++    Section<LearnArray<LEARNKEY> >* sec = ((fCache->fSections)[type][subtype]).sub_secs[0];
+     double learn_prob = 0.0;
+     if(!sec->getValue(key, learn_prob, learn_status, stats, detail)) {
+         return 0.0;
+@@ -46,41 +56,556 @@
+     return learn_prob;
+ }
+ 
+-
+-inline float Predictor::getCPALearnProb(predict_key& key,
++template<class ActualPredictor>
++inline float Predictor<ActualPredictor>::getCPALearnProb(predict_key& key,
+             learning_status& learn_status,
+             ServerStats& stats,
+             rm_string *detail) const {
+-    return getLearnProb(key, section::type::GEN,
++    return getLearnProb<comp_cr_camp_conv_pearl_key>(key, section::type::GEN,
+             section::gensubtype::CPA_LEARN_ARRAY,
+             learn_status, stats, detail);
+ }
+ 
+-inline float Predictor::getCpcLearnProb(predict_key& key,
++template<class ActualPredictor>
++inline float Predictor<ActualPredictor>::getCpcLearnProb(predict_key& key,
+             learning_status& learn_status,
+             ServerStats& stats,
+             rm_string *detail) const {
+-    return getLearnProb(key, section::type::GEN,
++    return getLearnProb<comp_cr_pearl_key>(key, section::type::GEN,
+             section::gensubtype::CPC_LEARN_ARRAY,
+             learn_status, stats, detail);
+ }
+ 
+-inline float Predictor::getDcpmLearnProb(predict_key& key,
++template<class ActualPredictor>
++inline float Predictor<ActualPredictor>::getDcpmLearnProb(predict_key& key,
+             learning_status& learn_status,
+             ServerStats& stats,
+             rm_string *detail) const {
+-    return getLearnProb(key, section::type::GEN,
++    return getLearnProb<comp_cr_camp_conv_pearl_key>(key, section::type::GEN,
+             section::gensubtype::DCPM_CONV_LEARN_ARRAY,
+             learn_status, stats, detail);
+  }
+ 
+-inline float Predictor::getDcpmClickLearnProb(predict_key& key,
++template<class ActualPredictor>
++inline float Predictor<ActualPredictor>::getDcpmClickLearnProb(predict_key& key,
+                         learning_status& learn_status,
+                         ServerStats& stats,
+                         rm_string *detail) const {
+-    return getLearnProb(key, section::type::GEN,
++    return getLearnProb<comp_cr_camp_pearl_key>(key, section::type::GEN,
+             section::gensubtype::DCPM_CLICK_LEARN_ARRAY,
+             learn_status, stats, detail);
+ }
+ 
++template<class ActualPredictor>
++Predictor<ActualPredictor>::Predictor(PredictConf const& conf, bool& iscreated) : fCache(NULL),
++             fIsValid(false), fConf(conf){
++    bool sepBlock = conf.UseHash();
++    fSpec.setSpec()
++            (section::type::GEN, section::gensubtype::CPC_LEARN_ARRAY)
++            (section::type::GEN, section::gensubtype::DCPM_CONV_LEARN_ARRAY)
++            (section::type::GEN, section::gensubtype::DCPM_CLICK_LEARN_ARRAY)
++            (section::type::GEN, section::gensubtype::CPA_LEARN_ARRAY)
++            (section::type::GEN, section::gensubtype::PEARL_PUBCLASS_MAP)
++            (section::type::GEN, section::gensubtype::SECTION_PEARL_MAP)
++            (section::type::GEN, section::gensubtype::SITE_PEARL_MAP)
++            (section::type::GEN, section::gensubtype::VURL_PEARL_MAP)
++            (section::type::GEN, section::gensubtype::PUB_PEARL_MAP)
++            (section::type::GEN, section::gensubtype::GLOBAL_CONSTANTS, false, true)
++            (section::type::CLICK, section::subtype::MODIFIER, sepBlock)
++            (section::type::PCC, section::subtype::MODIFIER, sepBlock, true)
++            (section::type::PVC, section::subtype::MODIFIER, sepBlock, true)
++            (section::type::CLICK, section::subtype::GLOBAL_DISC, false, true)
++            (section::type::PCC, section::subtype::GLOBAL_DISC, false, true)
++            (section::type::PVC, section::subtype::GLOBAL_DISC, false, true)
++            ;
++    if(fConf.IsThrottle()) {
++        if(fConf.IsVBTThrottle()) {
++            if(fConf.IsClickThrottle()){
++                fSpec.setSpec()
++                        (section::type::CLICK, section::subtype::THROTTLE_CACHE_VBT);
++            }
++            if(fConf.IsPccThrottle()) {
++                fSpec.setSpec()
++                        (section::type::PCC, section::subtype::THROTTLE_CACHE_VBT);
++            }
++            if(fConf.IsPvcThrottle()) {
++                fSpec.setSpec()
++                        (section::type::PVC, section::subtype::THROTTLE_CACHE_VBT);
++            }
++        } else {
++            if(fConf.IsClickThrottle()){
++                fSpec.setSpec()
++                        (section::type::CLICK, section::subtype::THROTTLE_CACHE);
++            }
++            if(fConf.IsPccThrottle()) {
++                fSpec.setSpec()
++                        (section::type::PCC, section::subtype::THROTTLE_CACHE);
++            }
++            if(fConf.IsPvcThrottle()) {
++                fSpec.setSpec()
++                        (section::type::PVC, section::subtype::THROTTLE_CACHE);
++            }
++        }
++    }
++
++    fSpec.UseHash(conf.UseHash());
++
++    fVbt.clickMult = conf.ClickMult();
++    fVbt.pccMult = conf.PccMult();
++    fVbt.pvcMult = conf.PvcMult();
++    iscreated = readVbtFiles();
++}
++
++template<class ActualPredictor>
++Predictor<ActualPredictor>::Predictor(PredictCache *cache) : fCache(cache), fIsValid(true){
++    fSpec.setSpec()
++            (section::type::GEN, section::gensubtype::CPC_LEARN_ARRAY)
++            (section::type::GEN, section::gensubtype::DCPM_CONV_LEARN_ARRAY)
++            (section::type::GEN, section::gensubtype::DCPM_CLICK_LEARN_ARRAY)
++            (section::type::GEN, section::gensubtype::CPA_LEARN_ARRAY)
++            (section::type::GEN, section::gensubtype::PEARL_PUBCLASS_MAP)
++            (section::type::GEN, section::gensubtype::SECTION_PEARL_MAP)
++            (section::type::GEN, section::gensubtype::SITE_PEARL_MAP)
++            (section::type::GEN, section::gensubtype::VURL_PEARL_MAP)
++            (section::type::GEN, section::gensubtype::PUB_PEARL_MAP)
++            (section::type::GEN, section::gensubtype::GLOBAL_CONSTANTS, false, true)
++            (section::type::CLICK, section::subtype::THROTTLE_CACHE)
++            (section::type::PCC, section::subtype::THROTTLE_CACHE)
++            (section::type::PVC, section::subtype::THROTTLE_CACHE)
++            (section::type::CLICK, section::subtype::MODIFIER)
++            (section::type::PCC, section::subtype::MODIFIER, false, true)
++            (section::type::PVC, section::subtype::MODIFIER, false, true)
++            (section::type::CLICK, section::subtype::GLOBAL_DISC, false, true)
++            (section::type::PCC, section::subtype::GLOBAL_DISC, false, true)
++            (section::type::PVC, section::subtype::GLOBAL_DISC, false, true)
++            ;
++}
++
++template<class ActualPredictor>
++bool Predictor<ActualPredictor>::refreshCache(PredictConf const& conf) {
++    bool ret = false;
++    PredictCache *pCache = new PredictCache();
++    if(pCache) {
++        ret = pCache->load(conf, fSpec);
++        if(ret) {
++            PredictScopedWriteLock lock(fCacheLock);
++            PredictScopedWriteLock thlock(fThrottleLock);
++            delete fCache;
++            fCache = pCache;
++            resetThrottle(false);
++            fIsValid = true;
++            return true;
++        } else {
++            delete pCache;
++        }
++        pCache = NULL;
++    }
++    return ret;
++}
++
++template<class ActualPredictor>
++bool Predictor<ActualPredictor>::destroyCache() {
++    PredictScopedWriteLock lock(fCacheLock);
++    if(fConf.IsThrottle()) {
++        PredictScopedWriteLock thlock(fThrottleLock);
++        ThrottleMemPool::fPool->reset();
++    }
++    delete fCache;
++    fCache = NULL;
++    fIsValid = false;
++    return true;
++}
++
++template<class ActualPredictor>
++uint64_t Predictor<ActualPredictor>::getPearl(uint64_t section_id, site_id_t site_id,
++        uint32_t vurl_id, entity_id_t publisher_id, rm_string *detail) const {
++
++    uint64_t pearl_id = 0;
++    //try using section pearl
++    if(getPearlFromMap(section::type::GEN, section::gensubtype::SECTION_PEARL_MAP,
++            section_id, pearl_id, detail)) {
++        rmstr_sprintf(detail, PredictTrace::MESSAGE_36, fConf.CachePrefix(),
++                "section", section_id, pearl_id);
++        return pearl_id;
++    }
++
++    //try using site pearl
++    if(getPearlFromMap(section::type::GEN, section::gensubtype::SITE_PEARL_MAP,
++            site_id, pearl_id, detail)) {
++        rmstr_sprintf(detail, PredictTrace::MESSAGE_36, fConf.CachePrefix(),
++                "site", site_id, pearl_id);
++        return pearl_id;
++    }
++
++    //try using vurl pearl
++    if(getPearlFromMap(section::type::GEN, section::gensubtype::VURL_PEARL_MAP,
++            vurl_id, pearl_id, detail)) {
++        rmstr_sprintf(detail, PredictTrace::MESSAGE_36, fConf.CachePrefix(),
++                "vurl", vurl_id, pearl_id);
++        return pearl_id;
++    }
++
++    //try using publisher pearl
++    if(getPearlFromMap(section::type::GEN, section::gensubtype::PUB_PEARL_MAP,
++            publisher_id, pearl_id, detail)) {
++        rmstr_sprintf(detail, PredictTrace::MESSAGE_36, fConf.CachePrefix(),
++                "publisher", publisher_id, pearl_id);
++        return pearl_id;
++    }
++
++    return 0; //default pearl
++}
++
++template<class ActualPredictor>
++double Predictor<ActualPredictor>::getClickModifier(predict_key& key,
++        rm_string *detail) const {
++
++    if(!fConf.UseModifier()) {
++        return 1.0;
++    }
++
++    SubSecTypeVecRef sections = (fCache->fSections)[section::type::CLICK][section::subtype::MODIFIER];
++    if(sections.no_subsecs == 0) {
++        return 1.0;
++    }
++    size_t key1[2];
++    key1[0] = FREQUENCY_BUCKET;
++    key1[1] = RECENCY_BUCKET;
++
++    double prob_mod = 1.0;
++    ServerStats stats;
++    for(int32_t i = 0; i < sections.no_subsecs; ++i) {
++        if(fSpec.UseHash()){
++            Section<CTSection<false> > *sec = (sections.sub_secs)[i];
++            if(sec->getValue(key, prob_mod, &(key1[0]), 2, stats, detail)) {
++                break;
++            } else {
++                prob_mod = 1.0;
++            }
++        } else {
++            Section<CTSection<true> > *sec = (sections.sub_secs)[i];
++            if(sec->getValue(key, prob_mod, &(key1[0]), 2, stats, detail)) {
++                break;
++            } else {
++                prob_mod = 1.0;
++            }
++        }
++    }
++    return prob_mod;
++}
++
++template<class ActualPredictor>
++double Predictor<ActualPredictor>::getConvModifier(predict_key& key,
++        bool is_post_view, rm_string *detail) const {
++
++    if(!fConf.UseModifier()) {
++        return 1.0;
++    }
++
++    return 1.0;
++}
++
++template<class ActualPredictor>
++bool Predictor<ActualPredictor>::clickThrottle(predict_key& key, float prob,
++        ServerStats& stats, rm_string *detail) const {
++    if(fConf.IsThrottle() &&
++       fConf.IsClickThrottle()) {
++        bool isThrottle = false;
++        PredictScopedReadLock lock(fThrottleLock);
++        if(fConf.IsVBTThrottle()) {
++            Section<ThrottleCacheVbt<ThrottleMemPool> >* sec = ((fCache->fSections)[section::type::CLICK][section::subtype::THROTTLE_CACHE_VBT]).sub_secs[0];
++            if(!sec->getValue(key, isThrottle, prob, stats, detail)) {
++                return false;
++            }
++        } else {
++            Section<ThrottleCache<ThrottleMemPool> >* sec = ((fCache->fSections)[section::type::CLICK][section::subtype::THROTTLE_CACHE]).sub_secs[0];
++            if(!sec->getValue(key, isThrottle, prob, stats, detail)) {
++                return false;
++            }
++        }
++        return isThrottle;
++    }
++    return false; //don't do anything.
++}
++
++template<class ActualPredictor>
++bool Predictor<ActualPredictor>::convThrottle(predict_key& key,
++        bool is_post_view,
++        float prob,
++        ServerStats& stats,
++        rm_string *detail) const {
++
++    int32_t type = 0;
++    bool dothrt = true;
++    if(is_post_view){
++        dothrt = fConf.IsThrottle() && fConf.IsPvcThrottle();
++        type =  section::type::PVC;
++    } else {
++        dothrt = fConf.IsThrottle() && fConf.IsPccThrottle();
++        type = section::type::PCC;
++    }
++
++    if(dothrt) {
++        int32_t subtype = 0;
++        bool isThrottle = false;
++        PredictScopedReadLock lock(fThrottleLock);
++        if(fConf.IsVBTThrottle()) {
++            Section<ThrottleCacheVbt<ThrottleMemPool> >* sec = ((fCache->fSections)[type][section::subtype::THROTTLE_CACHE_VBT]).sub_secs[0];
++            if(!sec->getValue(key, isThrottle, prob, stats, detail)) {
++                return false;
++            }
++        } else {
++            Section<ThrottleCache<ThrottleMemPool> >* sec = ((fCache->fSections)[type][section::subtype::THROTTLE_CACHE]).sub_secs[0];
++            if(!sec->getValue(key, isThrottle, prob, stats, detail)) {
++                return false;
++            }
++        }
++        return isThrottle;
++    }
++    return false;
++}
++
++template<class ActualPredictor>
++bool Predictor<ActualPredictor>::registerClickImpression(predict_key& key,
++            double amount, float prob,
++            ServerStats& stats) {
++    if(fConf.IsThrottle() &&
++         fConf.IsClickThrottle()) {
++        int32_t subtype = 0;
++        PredictScopedWriteLock thlock(fThrottleLock);
++        if(fConf.IsVBTThrottle()) {
++            Section<ThrottleCacheVbt<ThrottleMemPool> >* sec = ((fCache->fSections)[section::type::CLICK][section::subtype::THROTTLE_CACHE_VBT]).sub_secs[0];
++            return sec->registerImpression(key, amount, prob, stats);
++        } else {
++            Section<ThrottleCache<ThrottleMemPool> >* sec = ((fCache->fSections)[section::type::CLICK][section::subtype::THROTTLE_CACHE]).sub_secs[0];
++            return sec->registerImpression(key, amount, prob, stats);
++        }
++    }
++    return true;
++}
++
++template<class ActualPredictor>
++bool Predictor<ActualPredictor>::registerConvImpression(predict_key& key,
++            bool is_post_view, double amount, float prob,
++            ServerStats& stats) {
++    int32_t type = 0;
++    bool dothrt = true;
++    if(is_post_view){
++        dothrt = fConf.IsThrottle() && fConf.IsPvcThrottle();
++        type =  section::type::PVC;
++    } else {
++        dothrt = fConf.IsThrottle() && fConf.IsPccThrottle();
++        type = section::type::PCC;
++    }
++
++    if(dothrt) {
++        int32_t subtype = 0;
++        PredictScopedWriteLock thlock(fThrottleLock);
++        if(fConf.IsVBTThrottle()) {
++            Section<ThrottleCacheVbt<ThrottleMemPool> >* sec = ((fCache->fSections)[type][section::subtype::THROTTLE_CACHE_VBT]).sub_secs[0];
++            return sec->registerImpression(key, amount, prob, stats);
++        } else {
++            Section<ThrottleCache<ThrottleMemPool> >* sec = ((fCache->fSections)[type][section::subtype::THROTTLE_CACHE]).sub_secs[0];
++            return sec->registerImpression(key, amount, prob, stats);
++        }
++    }
++    return true;
++}
++
++template<class ActualPredictor>
++bool Predictor<ActualPredictor>::readVbtFiles() {
++
++    if(!fConf.IsVBTThrottle()) {
++        return true;
++    }
++    allocateVbt();
++    int ps_fd = open(fConf.PoissonCdfTab().c_str(), O_RDONLY);
++    int z_fd = open(fConf.ZTab().c_str(), O_RDONLY);
++    if ((ps_fd < 0) || (z_fd < 0)) {
++        int e = errno;
++        util_error(LOG_ERR, "Predictor Poisson table : Can't open either '%s' or '%s': %s\n",
++                fConf.PoissonCdfTab().c_str(), fConf.ZTab().c_str(), errno_string(e).c_str());
++        if(ps_fd >= 0) close(ps_fd);
++        if(z_fd >= 0) close(z_fd);
++        return false;
++    }
++
++    for(size_t i=0;i<MAX_SERVES;i++){
++        for(size_t j=0;j<MAX_LAMBDAS;j++) {
++           //Read one double at a time.
++           if(!predict::Utils::safe_read(ps_fd, (fVbt.poisson_cdf_tab)[j][i])) {
++               close(ps_fd);
++               util_error(LOG_ERR, "The CDF initializer file is not read completely. Be ready to get wrong probability.");
++               return false;
++           }
++        }
++    }
++    close(ps_fd);
++
++    for(size_t i=0;i<MAX_NORM_CHART;i++) {
++        //Read one double at a time.
++        if(!predict::Utils::safe_read(z_fd, (fVbt.z_tab)[i])) {
++            close(z_fd);
++            util_error(LOG_ERR, "The Z table file is not read completely. Be ready to get wrong probability.");
++            return false;
++        }
++    }
++    close(z_fd);
++    return true;
++}
++
++template<class ActualPredictor>
++void Predictor<ActualPredictor>::allocateVbt() {
++    rm_random_init();
++    if(fVbt.poisson_cdf_tab == NULL) {
++        fVbt.poisson_cdf_tab = new double*[MAX_LAMBDAS];
++        for(size_t i = 0; i < MAX_LAMBDAS; i++) {
++            (fVbt.poisson_cdf_tab)[i] = new double[MAX_SERVES];
++        }
++    }
++    if(fVbt.z_tab == NULL) {
++        fVbt.z_tab = new double[MAX_NORM_CHART];
++    }
++    fSpec.VbtConfig(fVbt); // set now, since allocation is done.
++}
++
++template<class ActualPredictor>
++void Predictor<ActualPredictor>::destroyVbt() {
++    if(fVbt.poisson_cdf_tab != NULL) {
++        for(size_t i = 0; i < MAX_LAMBDAS; i++) {
++           if((fVbt.poisson_cdf_tab)[i] != NULL) {
++               delete [] (fVbt.poisson_cdf_tab)[i];
++               (fVbt.poisson_cdf_tab)[i] = NULL;
++           }
++        }
++        delete [] fVbt.poisson_cdf_tab;
++        fVbt.poisson_cdf_tab = NULL;
++    }
++    if(fVbt.z_tab != NULL) {
++        delete [] fVbt.z_tab;
++        fVbt.z_tab = NULL;
++    }
++    fSpec.VbtConfig(fVbt); // reset the vbt things.
++}
++
++template<class ActualPredictor>
++void Predictor<ActualPredictor>::resetThrottleInt() {
++    if(fConf.IsThrottle()) {
++        ThrottleMemPool::fPool->reset();
++        if(fConf.IsVBTThrottle()) {
++            if(fConf.IsClickThrottle()){
++                Section<ThrottleCacheVbt<ThrottleMemPool> >* cl_vbtSec = ((fCache->fSections)[section::type::CLICK][section::subtype::THROTTLE_CACHE_VBT]).sub_secs[0];
++                cl_vbtSec->reset();
++            }
++            if(fConf.IsPccThrottle()) {
++                Section<ThrottleCacheVbt<ThrottleMemPool> >* pcc_vbtSec = ((fCache->fSections)[section::type::PCC][section::subtype::THROTTLE_CACHE_VBT]).sub_secs[0];
++                pcc_vbtSec->reset();
++            }
++            if(fConf.IsPvcThrottle()) {
++                Section<ThrottleCacheVbt<ThrottleMemPool> >* pvc_vbtSec = ((fCache->fSections)[section::type::PVC][section::subtype::THROTTLE_CACHE_VBT]).sub_secs[0];
++                pvc_vbtSec->reset();
++            }
++        } else {
++            if(fConf.IsClickThrottle()){
++                Section<ThrottleCache<ThrottleMemPool> >* cl_thSec = ((fCache->fSections)[section::type::CLICK][section::subtype::THROTTLE_CACHE]).sub_secs[0];
++                cl_thSec->reset();
++            }
++            if(fConf.IsPccThrottle()) {
++                Section<ThrottleCache<ThrottleMemPool> >* pcc_thSec = ((fCache->fSections)[section::type::PCC][section::subtype::THROTTLE_CACHE]).sub_secs[0];
++                pcc_thSec->reset();
++            }
++            if(fConf.IsPvcThrottle()) {
++                Section<ThrottleCache<ThrottleMemPool> >* pvc_thSec = ((fCache->fSections)[section::type::PVC][section::subtype::THROTTLE_CACHE]).sub_secs[0];
++                pvc_thSec->reset();
++            }
++        }
++    }
++}
++
++template<class ActualPredictor>
++void Predictor<ActualPredictor>::resetThrottle(bool isNotLocked) {
++    if(isNotLocked) {
++        PredictScopedWriteLock thlock(fThrottleLock);
++        resetThrottleInt();
++    } else {
++        resetThrottleInt();
++    }
++}
++
++// Caller should take care of the locks.
++template<class ActualPredictor>
++double Predictor<ActualPredictor>::getClickmodifierInt(predict_key& key,
++        ServerStats& stats,
++        rm_string *detail) const {
++
++    if(!fConf.UseModifier()) {
++        return 1.0;
++    }
++
++    SubSecTypeVecRef sections = (fCache->fSections)[section::type::CLICK][section::subtype::MODIFIER];
++    if(sections.no_subsecs == 0) {
++        return 1.0;
++    }
++    double mod = 1.0;
++    double prob_mod = 1.0;
++    for(int32_t i = 0; i < sections.no_subsecs; ++i) {
++        mod = 1.0;
++        if(fSpec.UseHash()){
++            Section<CTSection<false> > *sec = (sections.sub_secs)[i];
++            if(sec->getValue(key, mod, stats, detail)) {
++                prob_mod *= mod;
++            }
++        } else {
++            Section<CTSection<true> > *sec = (sections.sub_secs)[i];
++            if(sec->getValue(key, mod, stats, detail)) {
++                prob_mod *= mod;
++            }
++        }
++    }
++    return prob_mod;
++}
++
++// Caller should take care of the locks.
++template<class ActualPredictor>
++double Predictor<ActualPredictor>::getConvmodifierInt(predict_key& key,
++        bool is_post_view,
++        ServerStats& stats,
++        rm_string *detail) const {
++
++    if(!fConf.UseModifier()) {
++        return 1.0;
++    }
++
++    int32_t type = 0;
++    if(is_post_view){
++        type =  section::type::PVC;
++    } else {
++        type = section::type::PCC;
++    }
++
++    SubSecTypeVecRef sections = (fCache->fSections)[type][section::subtype::MODIFIER];
++    if(sections.no_subsecs == 0) {
++        return 1.0;
++    }
++
++    double mod = 1.0;
++    double prob_mod = 1.0;
++
++    for(int32_t i = 0; i < sections.no_subsecs; ++i) {
++        mod = 1.0;
++        if(fSpec.UseHash()){
++            Section<CTSection<false> > *sec = (sections.sub_secs)[i];
++            if(sec->getValue(key, mod, stats, detail)) {
++                prob_mod *= mod;
++            }
++        } else {
++            Section<CTSection<true> > *sec = (sections.sub_secs)[i];
++            if(sec->getValue(key, mod, stats, detail)) {
++                prob_mod *= mod;
++            }
++        }
++    }
++    return prob_mod;
++}
++
+ #endif // __PREDICTOR_IPP_

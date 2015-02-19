@@ -1,0 +1,47 @@
+Index: src/predict/online/sections/LearnArray.hpp
+===================================================================
+--- src/predict/online/sections/LearnArray.hpp	(revision 56548)
++++ src/predict/online/sections/LearnArray.hpp	(working copy)
+@@ -18,7 +18,7 @@
+ #include "predict/online/common/CommonPredictTypes.hpp"
+ 
+ template<class LEARNKEY>
+-class LearnArray : public Section {
++class LearnArray : public Section<LearnArray<LEARNKEY> > {
+ 
+     private:
+ 
+@@ -29,20 +29,25 @@
+     typedef CommonSizeHeader::type Header;
+ 
+     public:
+-    explicit LearnArray(IdArrayConstPtr ptr, CommonSectionHeaderRef hdr) : Section(ptr, hdr),
++    explicit LearnArray(IdArrayConstPtr ptr, CommonSectionHeaderRef hdr) :
++             Section<LearnArray<LEARNKEY> >(ptr, hdr),
+              fContainer(NULL), fSize(0) {}
+ 
+-    virtual bool load(MemBlockType &mem, size_t &tillRead);
++    bool load(MemBlockType &mem, size_t &tillRead);
+ 
+     // double is for probability
+-    virtual bool getValue(predict_key& key,
+-                          double& value,
+-                          learning_status& learn_status,
+-                          ServerStats& stats,
+-                          rm_string *detail) const;
++    bool getValue(predict_key& key,
++                  double& value,
++                  learning_status& learn_status,
++                  ServerStats& stats,
++                  rm_string *detail) const;
+ 
+-    virtual void dump(std::ostream& out, bool isDumpHeader) const;
++    void dump(std::ostream& out, bool isDumpHeader) const;
+ 
++    protected:
++    using Section<LearnArray<LEARNKEY> >::fCache;
++    using Section<LearnArray<LEARNKEY> >::fType;
++
+     private:
+ 
+     void update(ServerStats& stats) const;

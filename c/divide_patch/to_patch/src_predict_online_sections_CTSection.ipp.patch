@@ -1,0 +1,49 @@
+Index: src/predict/online/sections/CTSection.ipp
+===================================================================
+--- src/predict/online/sections/CTSection.ipp	(revision 56548)
++++ src/predict/online/sections/CTSection.ipp	(working copy)
+@@ -23,7 +23,7 @@
+         return sect;
+     }
+     else {
+-        IdArrayConstPtr idarr = fCache.getIdArray();
++        IdArrayConstPtr idarr = fCache.fIDArr;
+         typename predict_any_map_section<N>::type* sect = new typename predict_any_map_section<N>::type(idarr,sect_desc);
+         section_insert_key<N> ins_key;
+         double value = 0.0;
+@@ -145,7 +145,7 @@
+ 
+ template<bool ALTFLAG>
+ void CTSection<ALTFLAG>::dump(std::ostream& out, bool isDumpHeader) const {
+-    (fContainer.any_section)->dumpme(out, fCache.getIdArray(), isDumpHeader);
++    (fContainer.any_section)->dumpme(out, fCache.fIDArr, isDumpHeader);
+ }
+ 
+ template<bool ALTFLAG>
+@@ -156,7 +156,7 @@
+                       rm_string *detail) const {
+     (void)stats; //unused.
+     (void)detail; //unused.
+-    value = (fContainer.any_section)->getValue(key, ukey, fCache.getIdArray());
++    value = (fContainer.any_section)->getValue(key, ukey, fCache.fIDArr);
+     return true;
+ }
+ 
+@@ -167,7 +167,7 @@
+                       rm_string *detail) const {
+     (void)stats; //unused.
+     (void)detail;
+-    value = (fContainer.any_section)->getValue(key, fCache.getIdArray());
++    value = (fContainer.any_section)->getValue(key, fCache.fIDArr);
+     return true;
+ 
+ }
+@@ -183,7 +183,7 @@
+     (void)stats; (void)detail;
+     value = 1.0;
+     if((fContainer.any_section)->checkKey(keypos, nkys)){
+-        value = (fContainer.any_section)->getValue(key, fCache.getIdArray());
++        value = (fContainer.any_section)->getValue(key, fCache.fIDArr);
+         return true;
+     }
+     return false;

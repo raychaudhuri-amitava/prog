@@ -1,0 +1,12 @@
+Index: src/predict/online/common/Makefrag.am
+===================================================================
+--- src/predict/online/common/Makefrag.am	(revision 56548)
++++ src/predict/online/common/Makefrag.am	(working copy)
+@@ -56,6 +56,7 @@
+   src/predict/online/common/PredictMessages.hpp \ 
+   src/predict/online/common/MStream.hpp \
+   src/predict/online/common/MStream.ipp \
++  src/predict/online/common/SectionDefHdr.hpp \
+   $(end)
+ 
+ lib_libpredict_online_common_la_SOURCES = \

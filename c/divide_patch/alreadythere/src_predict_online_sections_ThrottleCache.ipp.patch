@@ -1,0 +1,40 @@
+Index: src/predict/online/sections/ThrottleCache.ipp
+===================================================================
+--- src/predict/online/sections/ThrottleCache.ipp	(revision 56549)
++++ src/predict/online/sections/ThrottleCache.ipp	(working copy)
+@@ -103,7 +103,7 @@
+         currentNode = &(*child);
+     }
+ 
+-    IdArrayConstPtr idarr = fCache.getIdArray();
++    IdArrayConstPtr idarr = fCache.fIDArr;
+     // Insert the remaining layers in the budget tree.
+     for (; i < fMaxKeys; ++i) {
+         data.key = key[fKeyPos[i]];
+@@ -127,7 +127,7 @@
+             throttle_cache_element* child_node = std::lower_bound(fThrottleEls + first,
+                     fThrottleEls + last + 1,
+                     tkey, basic_comparator<throttle_cache_element,
+-                    search_element> (fCache.getIdArray()));
++                    search_element> (fCache.fIDArr));
+ 
+             if ((child_node == fThrottleEls + last + 1) ||
+                     (idarr[child_node->key] != tkey.key)) {
+@@ -235,7 +235,7 @@
+     int32_t i = 1;
+     predict::EnumMapperBase* attr = predict::MapperFactory::getMapper<predict::AttrTypeTrait>();
+     for(; i < keys.size(); ++i) {
+-        out << attr->idToName(fKeyPos[i - 1]) << "=" << (fCache.getIdArray())[keys[i]] << ">";
++        out << attr->idToName(fKeyPos[i - 1]) << "=" << (fCache.fIDArr)[keys[i]] << ">";
+     }
+     return i;
+ }
+@@ -247,7 +247,7 @@
+     if(level >= 0) {
+         predict::EnumMapperBase* attr = predict::MapperFactory::getMapper<predict::AttrTypeTrait>();
+         int32_t i = commonOutputNodeThrottle(out, keys);
+-        out << attr->idToName(fKeyPos[i - 1]) << "=" << (fCache.getIdArray())[node->key] << " ";
++        out << attr->idToName(fKeyPos[i - 1]) << "=" << (fCache.fIDArr)[node->key] << " ";
+         out << node->successes << " ";
+         out << "\n";
+     }

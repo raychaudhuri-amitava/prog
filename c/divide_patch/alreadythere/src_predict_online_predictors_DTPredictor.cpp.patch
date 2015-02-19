@@ -1,0 +1,28 @@
+Index: src/predict/online/predictors/DTPredictor.cpp
+===================================================================
+--- src/predict/online/predictors/DTPredictor.cpp	(revision 56548)
++++ src/predict/online/predictors/DTPredictor.cpp	(working copy)
+@@ -27,9 +27,8 @@
+ float DTPredictor::getClickProb(predict_key& key,
+         ServerStats& stats, rm_string *detail) const {
+ 
+-    PredictScopedReadLock lock(fCacheLock);
+-    SectionPtr sec = fCache->getSection(section::type::CLICK,
+-            section::subtype::DT_OPT, 0);
++    key[PUBCLASS] = getPubclass(key[PEARL_ID]);
++    SectionPtr sec = ((fCache->fSections)[section::type::CLICK][section::subtype::DT_OPT]).sub_secs[0];
+ 
+     double prob = 0.0;
+ 
+@@ -61,9 +60,8 @@
+         type = section::type::PCC;
+         click_prob = getClickProb(key, stats, detail);
+     }
+-    PredictScopedReadLock lock(fCacheLock);
+-    SectionPtr sec = fCache->getSection(type,
+-            section::subtype::DT_OPT, 0);
++    key[PUBCLASS] = getPubclass(key[PEARL_ID]);
++    SectionPtr sec = ((fCache->fSections)[type][section::subtype::DT_OPT]).sub_secs[0];
+ 
+     double prob = 0.0;
+ 

@@ -1,0 +1,41 @@
+Index: src/predict/online/predictors/Predictor.ipp
+===================================================================
+--- src/predict/online/predictors/Predictor.ipp	(revision 56548)
++++ src/predict/online/predictors/Predictor.ipp	(working copy)
+@@ -9,16 +9,13 @@
+ #include "predict/online/sections/Section.hpp"
+ 
+ inline const char* Predictor::getCacheVersion() const {
+-    PredictScopedReadLock lock(fCacheLock);
+     return fCache->getCacheVersion();
+ }
+ 
+ inline uint64_t Predictor::getPubclass(uint64_t pearl_id) const {
+     uint64_t pub_class_id = 0;
+     ServerStats stats;
+-    PredictScopedReadLock lock(fCacheLock);
+-    SectionPtr sections = fCache->getSection(
+-            section::type::GEN, section::gensubtype::PEARL_PUBCLASS_MAP, 0);
++    SectionPtr sections = ((fCache->fSections)[section::type::GEN][section::gensubtype::PEARL_PUBCLASS_MAP]).sub_secs[0];
+     if(sections->getValue(pearl_id, pub_class_id, stats, NULL)) {
+         return pub_class_id;
+     }
+@@ -28,7 +25,7 @@
+ inline bool Predictor::getPearlFromMap(int32_t type, int32_t subtype,
+         mixed_id_t id, uint64_t &pearl_id, rm_string *detail) const {
+     ServerStats stats;
+-    SectionPtr sections = fCache->getSection(type, subtype, 0);
++    SectionPtr sections = ((fCache->fSections)[type][subtype]).sub_secs[0];
+     return sections->getValue(id, pearl_id, stats, detail);
+ }
+ 
+@@ -37,8 +34,7 @@
+             learning_status& learn_status,
+             ServerStats& stats,
+             rm_string *detail) const {
+-    PredictScopedReadLock lock(fCacheLock);
+-    SectionPtr sec = fCache->getSection(type, subtype, 0);
++    SectionPtr sec = ((fCache->fSections)[type][subtype]).sub_secs[0];
+     double learn_prob = 0.0;
+     if(!sec->getValue(key, learn_prob, learn_status, stats, detail)) {
+         return 0.0;

@@ -1,0 +1,53 @@
+Index: src/predict/online/predictors/DTPredictor.cpp
+===================================================================
+--- src/predict/online/predictors/DTPredictor.cpp	(revision 56548)
++++ src/predict/online/predictors/DTPredictor.cpp	(working copy)
+@@ -6,7 +6,7 @@
+ #include "traffic/objects/rm_string.hpp"
+ #include "predict/online/sections/Section.hpp"
+ 
+-DTPredictor::DTPredictor(PredictConf const& conf, bool& iscreated) : Predictor(conf, iscreated) {
++DTPredictor::DTPredictor(PredictConf const& conf, bool& iscreated) : Predictor<DTPredictor>(conf, iscreated) {
+     fSpec.PredType(PredictorType(predictor::type::ONLYDT, predictor::version::P2));
+     fSpec.setSpec()
+             (section::type::CLICK, section::subtype::DT_OPT)
+@@ -15,7 +15,7 @@
+             ;
+ }
+ 
+-DTPredictor::DTPredictor(PredictCache *cache) : Predictor(cache) { //will be from dumper. VBT is not required.
++DTPredictor::DTPredictor(PredictCache *cache) : Predictor<DTPredictor>(cache) { //will be from dumper. VBT is not required.
+     fSpec.PredType(PredictorType(predictor::type::ONLYDT, predictor::version::P2));
+     fSpec.setSpec()
+             (section::type::CLICK, section::subtype::DT_OPT)
+@@ -27,12 +27,10 @@
+ float DTPredictor::getClickProb(predict_key& key,
+         ServerStats& stats, rm_string *detail) const {
+ 
+-    PredictScopedReadLock lock(fCacheLock);
+-    SectionPtr sec = fCache->getSection(section::type::CLICK,
+-            section::subtype::DT_OPT, 0);
++    key[PUBCLASS] = getPubclass(key[PEARL_ID]);
++    Section<DTOptimizedTree<OptimizedNomalElement> >* sec = ((fCache->fSections)[section::type::CLICK][section::subtype::DT_OPT]).sub_secs[0];
+ 
+     double prob = 0.0;
+-
+     if(!sec->getValue(key, prob, stats, detail)) {
+         return 0.0;
+     }
+@@ -57,13 +55,12 @@
+     double click_prob = 1.0;
+     if(is_post_view){
+         type =  section::type::PVC;
++        key[PUBCLASS] = getPubclass(key[PEARL_ID]);
+     } else {
+         type = section::type::PCC;
+         click_prob = getClickProb(key, stats, detail);
+     }
+-    PredictScopedReadLock lock(fCacheLock);
+-    SectionPtr sec = fCache->getSection(type,
+-            section::subtype::DT_OPT, 0);
++    Section<DTOptimizedTree<OptimizedNomalElement> >* sec = ((fCache->fSections)[type][section::subtype::DT_OPT]).sub_secs[0];
+ 
+     double prob = 0.0;
+ 

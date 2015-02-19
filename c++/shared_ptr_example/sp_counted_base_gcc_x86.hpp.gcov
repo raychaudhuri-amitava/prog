@@ -1,0 +1,203 @@
+        -:    0:Source:/usr/include/boost/detail/sp_counted_base_gcc_x86.hpp
+        -:    0:Graph:shared_array_example.gcno
+        -:    0:Data:-
+        -:    0:Runs:0
+        -:    0:Programs:0
+        -:    1:#ifndef BOOST_DETAIL_SP_COUNTED_BASE_GCC_X86_HPP_INCLUDED
+        -:    2:#define BOOST_DETAIL_SP_COUNTED_BASE_GCC_X86_HPP_INCLUDED
+        -:    3:
+        -:    4:// MS compatible compilers support #pragma once
+        -:    5:
+        -:    6:#if defined(_MSC_VER) && (_MSC_VER >= 1020)
+        -:    7:# pragma once
+        -:    8:#endif
+        -:    9:
+        -:   10://
+        -:   11://  detail/sp_counted_base_gcc_x86.hpp - g++ on 486+ or AMD64
+        -:   12://
+        -:   13://  Copyright (c) 2001, 2002, 2003 Peter Dimov and Multi Media Ltd.
+        -:   14://  Copyright 2004-2005 Peter Dimov
+        -:   15://
+        -:   16://  Distributed under the Boost Software License, Version 1.0. (See
+        -:   17://  accompanying file LICENSE_1_0.txt or copy at
+        -:   18://  http://www.boost.org/LICENSE_1_0.txt)
+        -:   19://
+        -:   20://
+        -:   21://  Lock-free algorithm by Alexander Terekhov
+        -:   22://
+        -:   23://  Thanks to Ben Hitchings for the #weak + (#shared != 0)
+        -:   24://  formulation
+        -:   25://
+        -:   26:
+        -:   27:#include <typeinfo>
+        -:   28:
+        -:   29:namespace boost
+        -:   30:{
+        -:   31:
+        -:   32:namespace detail
+        -:   33:{
+        -:   34:
+    #####:   35:inline int atomic_exchange_and_add( int * pw, int dv )
+        -:   36:{
+        -:   37:    // int r = *pw;
+        -:   38:    // *pw += dv;
+        -:   39:    // return r;
+        -:   40:
+        -:   41:    int r;
+        -:   42:
+        -:   43:    __asm__ __volatile__
+        -:   44:    (
+        -:   45:        "lock\n\t"
+        -:   46:        "xadd %1, %0":
+        -:   47:        "=m"( *pw ), "=r"( r ): // outputs (%0, %1)
+        -:   48:        "m"( *pw ), "1"( dv ): // inputs (%2, %3 == %1)
+        -:   49:        "memory", "cc" // clobbers
+    #####:   50:    );
+    $$$$$:   50-block  0
+        -:   51:
+    #####:   52:    return r;
+        -:   53:}
+        -:   54:
+    #####:   55:inline void atomic_increment( int * pw )
+        -:   56:{
+        -:   57:    //atomic_exchange_and_add( pw, 1 );
+        -:   58:
+        -:   59:    __asm__
+        -:   60:    (
+        -:   61:        "lock\n\t"
+        -:   62:        "incl %0":
+        -:   63:        "=m"( *pw ): // output (%0)
+        -:   64:        "m"( *pw ): // input (%1)
+        -:   65:        "cc" // clobbers
+    #####:   66:    );
+    #####:   67:}
+    $$$$$:   67-block  0
+        -:   68:
+        -:   69:inline int atomic_conditional_increment( int * pw )
+        -:   70:{
+        -:   71:    // int rv = *pw;
+        -:   72:    // if( rv != 0 ) ++*pw;
+        -:   73:    // return rv;
+        -:   74:
+        -:   75:    int rv, tmp;
+        -:   76:
+        -:   77:    __asm__
+        -:   78:    (
+        -:   79:        "movl %0, %%eax\n\t"
+        -:   80:        "0:\n\t"
+        -:   81:        "test %%eax, %%eax\n\t"
+        -:   82:        "je 1f\n\t"
+        -:   83:        "movl %%eax, %2\n\t"
+        -:   84:        "incl %2\n\t"
+        -:   85:        "lock\n\t"
+        -:   86:        "cmpxchgl %2, %0\n\t"
+        -:   87:        "jne 0b\n\t"
+        -:   88:        "1:":
+        -:   89:        "=m"( *pw ), "=&a"( rv ), "=&r"( tmp ): // outputs (%0, %1, %2)
+        -:   90:        "m"( *pw ): // input (%3)
+        -:   91:        "cc" // clobbers
+        -:   92:    );
+        -:   93:
+        -:   94:    return rv;
+        -:   95:}
+        -:   96:
+        -:   97:class sp_counted_base
+        -:   98:{
+        -:   99:private:
+        -:  100:
+        -:  101:    sp_counted_base( sp_counted_base const & );
+        -:  102:    sp_counted_base & operator= ( sp_counted_base const & );
+        -:  103:
+        -:  104:    int use_count_;        // #shared
+        -:  105:    int weak_count_;       // #weak + (#shared != 0)
+        -:  106:
+        -:  107:public:
+        -:  108:
+    #####:  109:    sp_counted_base(): use_count_( 1 ), weak_count_( 1 )
+        -:  110:    {
+    #####:  111:    }
+    $$$$$:  111-block  0
+        -:  112:
+    #####:  113:    virtual ~sp_counted_base() // nothrow
+    #####:  114:    {
+    $$$$$:  114-block  0
+    $$$$$:  114-block  1
+    $$$$$:  114-block  2
+    #####:  115:    }
+    $$$$$:  115-block  0
+    $$$$$:  115-block  1
+    $$$$$:  115-block  2
+    $$$$$:  115-block  3
+    $$$$$:  115-block  4
+    $$$$$:  115-block  5
+    $$$$$:  115-block  6
+    $$$$$:  115-block  7
+    $$$$$:  115-block  8
+        -:  116:
+        -:  117:    // dispose() is called when use_count_ drops to zero, to release
+        -:  118:    // the resources managed by *this.
+        -:  119:
+        -:  120:    virtual void dispose() = 0; // nothrow
+        -:  121:
+        -:  122:    // destroy() is called when weak_count_ drops to zero.
+        -:  123:
+    #####:  124:    virtual void destroy() // nothrow
+        -:  125:    {
+    #####:  126:        delete this;
+    $$$$$:  126-block  0
+    $$$$$:  126-block  1
+    #####:  127:    }
+    $$$$$:  127-block  0
+        -:  128:
+        -:  129:    virtual void * get_deleter( std::type_info const & ti ) = 0;
+        -:  130:
+    #####:  131:    void add_ref_copy()
+        -:  132:    {
+    #####:  133:        atomic_increment( &use_count_ );
+    $$$$$:  133-block  0
+    #####:  134:    }
+        -:  135:
+        -:  136:    bool add_ref_lock() // true on success
+        -:  137:    {
+        -:  138:        return atomic_conditional_increment( &use_count_ ) != 0;
+        -:  139:    }
+        -:  140:
+    #####:  141:    void release() // nothrow
+        -:  142:    {
+    #####:  143:        if( atomic_exchange_and_add( &use_count_, -1 ) == 1 )
+    $$$$$:  143-block  0
+        -:  144:        {
+    #####:  145:            dispose();
+    $$$$$:  145-block  0
+    #####:  146:            weak_release();
+        -:  147:        }
+    #####:  148:    }
+    $$$$$:  148-block  0
+        -:  149:
+        -:  150:    void weak_add_ref() // nothrow
+        -:  151:    {
+        -:  152:        atomic_increment( &weak_count_ );
+        -:  153:    }
+        -:  154:
+    #####:  155:    void weak_release() // nothrow
+        -:  156:    {
+    #####:  157:        if( atomic_exchange_and_add( &weak_count_, -1 ) == 1 )
+    $$$$$:  157-block  0
+        -:  158:        {
+    #####:  159:            destroy();
+    $$$$$:  159-block  0
+        -:  160:        }
+    #####:  161:    }
+    $$$$$:  161-block  0
+        -:  162:
+        -:  163:    long use_count() const // nothrow
+        -:  164:    {
+        -:  165:        return static_cast<int const volatile &>( use_count_ );
+        -:  166:    }
+        -:  167:};
+        -:  168:
+        -:  169:} // namespace detail
+        -:  170:
+        -:  171:} // namespace boost
+        -:  172:
+        -:  173:#endif  // #ifndef BOOST_DETAIL_SP_COUNTED_BASE_GCC_X86_HPP_INCLUDED

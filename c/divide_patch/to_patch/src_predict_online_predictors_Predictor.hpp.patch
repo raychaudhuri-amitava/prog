@@ -1,0 +1,100 @@
+Index: src/predict/online/predictors/Predictor.hpp
+===================================================================
+--- src/predict/online/predictors/Predictor.hpp	(revision 56548)
++++ src/predict/online/predictors/Predictor.hpp	(working copy)
+@@ -16,6 +16,7 @@
+ #include "predict/online/common/GlobalLearnHdr.hpp"
+ #include "predict/online/common/LearnCommonHeader.hpp"
+ 
++template<class ActualPredictor>
+ class Predictor {
+     public:
+ 
+@@ -23,27 +24,35 @@
+ 
+     explicit Predictor(PredictCache *cache);
+ 
+-    virtual ~Predictor(){
++    ~Predictor(){
+         delete fCache;
+         fCache = NULL;
+         destroyVbt();
+     }
+ 
+     // Derived classes must implement the following functions
+-    virtual float getClickProb(predict_key& key, ServerStats& stats, rm_string *detail) const = 0;
++    float getClickProb(predict_key& key, ServerStats& stats, rm_string *detail) const {
++        return (static_cast<ActualPredictor*>(this))->getClickProb(key, stats, detail);
++    }
+ 
+-    virtual float getClickProb(predict_key& key,
+-                          predict_undiscretized_key& ukey,
+-                          ServerStats& stats, rm_string *detail) const = 0;
++    float getClickProb(predict_key& key,
++                       predict_undiscretized_key& ukey,
++                       ServerStats& stats, rm_string *detail) const {
++        return (static_cast<ActualPredictor*>(this))->getClickProb(key, ukey, stats, detail);
++    }
+ 
+-    virtual float getConvProb(predict_key& key, bool is_post_view,
+-            ServerStats& stats, rm_string *detail) const = 0;
++    float getConvProb(predict_key& key, bool is_post_view,
++            ServerStats& stats, rm_string *detail) const {
++        return (static_cast<ActualPredictor*>(this))->getConvProb(key, is_post_view, stats, detail);
++    }
+ 
+-    virtual float getConvProb(predict_key& key,
+-                          predict_undiscretized_key& ukey,
+-                          bool is_post_view,
+-                          ServerStats& stats,
+-                          rm_string *detail) const = 0;
++    float getConvProb(predict_key& key,
++                      predict_undiscretized_key& ukey,
++                      bool is_post_view,
++                      ServerStats& stats,
++                      rm_string *detail) const {
++        return (static_cast<ActualPredictor*>(this))->getConvProb(key, ukey, is_post_view, stats, detail);
++    }
+ 
+     //Following functions are implemented.
+     bool refreshCache(PredictConf const& conf);
+@@ -54,8 +63,6 @@
+             uint32_t vurl_id, entity_id_t publisher_id,
+             rm_string *detail = NULL) const;
+ 
+-    uint64_t getPubclass(uint64_t pearl_id) const;
+-
+     const char* getCacheVersion() const;
+ 
+     double getClickModifier(predict_key& key, rm_string *detail) const;
+@@ -115,7 +122,7 @@
+ 
+     private:
+ 
+-
++    template<typename LEARNKEY>
+     float getLearnProb(predict_key& key,
+                 int32_t type, int32_t subtype,
+                 learning_status& learn_status,
+@@ -141,15 +148,19 @@
+     
+     void resetThrottleInt();
+ 
++    uint64_t getPubclass(uint64_t pearl_id) const;
++
+     protected:
+ 
+     bool fIsValid;
+     PredictCache *fCache;
+     PredictorSpec fSpec;
+-    mutable PredictRWLock fCacheLock;
+-    mutable PredictRWLock fThrottleLock;
+     PredictConf fConf;
+     vbt_config fVbt;
++    mutable PredictRWLock fThrottleLock;
++
++    public:
++    mutable PredictRWLock fCacheLock;
+ };
+ 
+ #include "Predictor.ipp"

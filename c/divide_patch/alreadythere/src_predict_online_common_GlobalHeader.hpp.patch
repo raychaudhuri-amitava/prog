@@ -1,0 +1,63 @@
+Index: src/predict/online/common/GlobalHeader.hpp
+===================================================================
+--- src/predict/online/common/GlobalHeader.hpp	(revision 56548)
++++ src/predict/online/common/GlobalHeader.hpp	(working copy)
+@@ -11,6 +11,7 @@
+ #include "PredictSection.hpp"
+ #include "SectionTypes.hpp"
+ #include "PredictorTypes.hpp"
++#include<vector>
+ 
+ struct GlobalCacheHeader {
+     int32_t pred_version;
+@@ -19,11 +20,13 @@
+     uint32_t num_sections;
+     size_t cache_bsize;
+     size_t id_array_size;
++    size_t cache_index_size;
+     char cache_version_string[64];
+     GlobalCacheHeader():pred_version(predictor::version::INVALID_VERSION),
+             pred_type(predictor::type::INVALID_PREDICTOR),
+             cache_type(predictor::cachetype::INVALID_CACHE),
+-            num_sections(0), cache_bsize(0), id_array_size(0) {
++            num_sections(0), cache_bsize(0), id_array_size(0),
++            cache_index_size(0){
+         memset(cache_version_string,0,64*sizeof(char));
+     }
+     ~GlobalCacheHeader(){}
+@@ -38,8 +41,8 @@
+     size_t no_subsec;
+     size_t tot_sec_byte_size;
+     CommonSectionHeader(): pri(0),
+-            sec_type(-1),
+-            sec_sub_type(-1),
++            sec_type(section::type::INVALID_TYPE),
++            sec_sub_type(section::subtype::INVALID_SUBTYPE),
+             no_subsec(0), tot_sec_byte_size(0){}
+     CommonSectionHeader(SectionType const& type, size_t nosubs, size_t byte_sz) :
+         no_subsec(nosubs), tot_sec_byte_size(byte_sz){
+@@ -63,6 +66,24 @@
+ 
+ typedef const CommonSizeHeader* CommonSizeHeaderPtr;
+ 
++struct CacheIndexElement {
++    int32_t sec_type;
++    int32_t sec_sub_type;
++    size_t tot_sec_byte_size;
++    CacheIndexElement():
++        sec_type(section::type::INVALID_TYPE),
++        sec_sub_type(section::subtype::INVALID_SUBTYPE),
++        tot_sec_byte_size(0){}
++    CacheIndexElement(SectionType const& type, size_t byte_sz) :
++        tot_sec_byte_size(byte_sz){
++        sec_type = type.getType();
++        sec_sub_type = type.getSubType();
++    }
++    ~CacheIndexElement(){}
++};
++typedef CacheIndexElement* CacheIndexPtr;
++typedef std::vector<CacheIndexElement> CacheIndex;
++
+ enum attributes
+ {
+     PEARL_ID = 0, //MUST START WITH PEARL_ID

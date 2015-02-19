@@ -1,0 +1,22 @@
+Index: src/predict/online/sections/LearnArray.ipp
+===================================================================
+--- src/predict/online/sections/LearnArray.ipp	(revision 56548)
++++ src/predict/online/sections/LearnArray.ipp	(working copy)
+@@ -40,7 +40,7 @@
+ 
+     learn_key64 lkey64;
+     lkey64.populate(key);
+-    IdArrayConstPtr idmp = fCache.getIdArray();
++    IdArrayConstPtr idmp = fCache.fIDArr;
+     const Element* learn_cell = std::lower_bound(fContainer,
+             fContainer + fSize, lkey64,
+             learn_comparator<learn_key32, learn_key64>(idmp));
+@@ -78,7 +78,7 @@
+         out<<"\nDUMPING LEARN ARRAY\n";
+         out<<"SIZE OF LEARN="<<fSize<<"\n";
+     }
+-    IdArrayConstPtr idmp = fCache.getIdArray();
++    IdArrayConstPtr idmp = fCache.fIDArr;
+     if(fSize > 0) {
+         fContainer[0].printToFile(out, idmp, true);
+         for(size_t i = 1; i < fSize; ++i) {

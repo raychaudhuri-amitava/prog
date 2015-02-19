@@ -1,0 +1,223 @@
+Index: src/predict/online/predictors/Predictor.cpp
+===================================================================
+--- src/predict/online/predictors/Predictor.cpp	(revision 56559)
++++ src/predict/online/predictors/Predictor.cpp	(working copy)
+@@ -5,6 +5,7 @@
+ 
+ #include "Predictor.hpp"
+ 
++#include "predict/online/common/SectionDefHdr.hpp"
+ #include "predict/online/sections/Section.hpp"
+ #include "predict/online/common/PredictMessages.hpp"
+ 
+@@ -16,6 +17,7 @@
+ 
+ Predictor::Predictor(PredictConf const& conf, bool& iscreated) : fCache(NULL),
+              fIsValid(false), fConf(conf){
++    bool sepBlock = conf.UseHash();
+     fSpec.setSpec()
+             (section::type::GEN, section::gensubtype::CPC_LEARN_ARRAY)
+             (section::type::GEN, section::gensubtype::DCPM_CONV_LEARN_ARRAY)
+@@ -26,13 +28,13 @@
+             (section::type::GEN, section::gensubtype::SITE_PEARL_MAP)
+             (section::type::GEN, section::gensubtype::VURL_PEARL_MAP)
+             (section::type::GEN, section::gensubtype::PUB_PEARL_MAP)
+-            (section::type::GEN, section::gensubtype::GLOBAL_CONSTANTS, true)
+-            (section::type::CLICK, section::subtype::MODIFIER, true)
+-            (section::type::PCC, section::subtype::MODIFIER, true)
+-            (section::type::PVC, section::subtype::MODIFIER, true)
+-            (section::type::CLICK, section::subtype::GLOBAL_DISC, true)
+-            (section::type::PCC, section::subtype::GLOBAL_DISC, true)
+-            (section::type::PVC, section::subtype::GLOBAL_DISC, true)
++            (section::type::GEN, section::gensubtype::GLOBAL_CONSTANTS, false, true)
++            (section::type::CLICK, section::subtype::MODIFIER, sepBlock)
++            (section::type::PCC, section::subtype::MODIFIER, sepBlock, true)
++            (section::type::PVC, section::subtype::MODIFIER, sepBlock, true)
++            (section::type::CLICK, section::subtype::GLOBAL_DISC, false, true)
++            (section::type::PCC, section::subtype::GLOBAL_DISC, false, true)
++            (section::type::PVC, section::subtype::GLOBAL_DISC, false, true)
+             ;
+     if(fConf.IsThrottle()) {
+         if(fConf.IsVBTThrottle()) {
+@@ -83,16 +85,16 @@
+             (section::type::GEN, section::gensubtype::SITE_PEARL_MAP)
+             (section::type::GEN, section::gensubtype::VURL_PEARL_MAP)
+             (section::type::GEN, section::gensubtype::PUB_PEARL_MAP)
+-            (section::type::GEN, section::gensubtype::GLOBAL_CONSTANTS, true)
++            (section::type::GEN, section::gensubtype::GLOBAL_CONSTANTS, false, true)
+             (section::type::CLICK, section::subtype::THROTTLE_CACHE)
+             (section::type::PCC, section::subtype::THROTTLE_CACHE)
+             (section::type::PVC, section::subtype::THROTTLE_CACHE)
+-            (section::type::CLICK, section::subtype::MODIFIER, true)
+-            (section::type::PCC, section::subtype::MODIFIER, true)
+-            (section::type::PVC, section::subtype::MODIFIER, true)
+-            (section::type::CLICK, section::subtype::GLOBAL_DISC, true)
+-            (section::type::PCC, section::subtype::GLOBAL_DISC, true)
+-            (section::type::PVC, section::subtype::GLOBAL_DISC, true)
++            (section::type::CLICK, section::subtype::MODIFIER)
++            (section::type::PCC, section::subtype::MODIFIER, false, true)
++            (section::type::PVC, section::subtype::MODIFIER, false, true)
++            (section::type::CLICK, section::subtype::GLOBAL_DISC, false, true)
++            (section::type::PCC, section::subtype::GLOBAL_DISC, false, true)
++            (section::type::PVC, section::subtype::GLOBAL_DISC, false, true)
+             ;
+ }
+ 
+@@ -134,7 +136,6 @@
+         uint32_t vurl_id, entity_id_t publisher_id, rm_string *detail) const {
+ 
+     uint64_t pearl_id = 0;
+-    PredictScopedReadLock lock(fCacheLock);    
+     //try using section pearl
+     if(getPearlFromMap(section::type::GEN, section::gensubtype::SECTION_PEARL_MAP,
+             section_id, pearl_id, detail)) {
+@@ -178,22 +179,18 @@
+         return 1.0;
+     }
+ 
+-    PredictScopedReadLock lock(fCacheLock);
+-
+-    SubSecTypeVecPtrRef sections = fCache->getSection(section::type::CLICK,
+-            section::subtype::MODIFIER);
+-    if(!(sections)) {
++    SubSecTypeVecRef sections = (fCache->fSections)[section::type::CLICK][section::subtype::MODIFIER];
++    if(sections.no_subsecs == 0) {
+         return 1.0;
+     }
+     size_t key1[2];
+     key1[0] = FREQUENCY_BUCKET;
+     key1[1] = RECENCY_BUCKET;
+ 
+-    int32_t siz = (*sections).size();
+     double prob_mod = 1.0;
+     ServerStats stats;
+-    for(int32_t i = 0; i < siz; ++i) {
+-        if(((*sections)[i])->getValue(key, prob_mod, &(key1[0]), 2, stats, detail)) {
++    for(int32_t i = 0; i < sections.no_subsecs; ++i) {
++        if(((sections.sub_secs)[i])->getValue(key, prob_mod, &(key1[0]), 2, stats, detail)) {
+             break;
+         } else {
+             prob_mod = 1.0;
+@@ -223,8 +220,7 @@
+             subtype = section::subtype::THROTTLE_CACHE;
+         }
+         PredictScopedReadLock lock(fThrottleLock);
+-        SectionPtr sec = fCache->getSection(
+-                section::type::CLICK, subtype, 0);
++        SectionPtr sec = ((fCache->fSections)[section::type::CLICK][subtype]).sub_secs[0];
+ 
+         bool isThrottle = false;
+ 
+@@ -261,7 +257,7 @@
+         }
+ 
+         PredictScopedReadLock lock(fThrottleLock);
+-        SectionPtr sec = fCache->getSection(type, subtype, 0);
++        SectionPtr sec = ((fCache->fSections)[type][subtype]).sub_secs[0];
+ 
+         bool isThrottle = false;
+ 
+@@ -285,8 +281,7 @@
+             subtype = section::subtype::THROTTLE_CACHE;
+         }
+         PredictScopedWriteLock thlock(fThrottleLock);
+-        SectionPtr sec = fCache->getSection(
+-                section::type::CLICK, subtype, 0);
++        SectionPtr sec = ((fCache->fSections)[section::type::CLICK][subtype]).sub_secs[0];
+ 
+         return sec->registerImpression(key,
+                 amount, prob, stats);
+@@ -316,8 +311,9 @@
+         }
+ 
+         PredictScopedWriteLock thlock(fThrottleLock);
+-        SectionPtr sec = fCache->getSection(type, subtype, 0);
+ 
++        SectionPtr sec = ((fCache->fSections)[type][subtype]).sub_secs[0];
++
+         return sec->registerImpression(key,
+                 amount, prob, stats);
+     }
+@@ -403,28 +399,28 @@
+         ThrottleMemPool::fPool->reset();
+         if(fConf.IsVBTThrottle()) {
+             if(fConf.IsClickThrottle()){
+-                SectionPtr cl_vbtSec = fCache->getSection(section::type::CLICK, section::subtype::THROTTLE_CACHE_VBT, 0);
++                SectionPtr cl_vbtSec = ((fCache->fSections)[section::type::CLICK][section::subtype::THROTTLE_CACHE_VBT]).sub_secs[0];
+                 cl_vbtSec->reset();
+             }
+             if(fConf.IsPccThrottle()) {
+-                SectionPtr pcc_vbtSec = fCache->getSection(section::type::PCC, section::subtype::THROTTLE_CACHE_VBT, 0);
++                SectionPtr pcc_vbtSec = ((fCache->fSections)[section::type::PCC][section::subtype::THROTTLE_CACHE_VBT]).sub_secs[0];
+                 pcc_vbtSec->reset();
+             }
+             if(fConf.IsPvcThrottle()) {
+-                SectionPtr pvc_vbtSec = fCache->getSection(section::type::PVC, section::subtype::THROTTLE_CACHE_VBT, 0);
++                SectionPtr pvc_vbtSec = ((fCache->fSections)[section::type::PVC][section::subtype::THROTTLE_CACHE_VBT]).sub_secs[0];
+                 pvc_vbtSec->reset();
+             }
+         } else {
+             if(fConf.IsClickThrottle()){
+-                SectionPtr cl_thSec = fCache->getSection(section::type::CLICK, section::subtype::THROTTLE_CACHE, 0);
++                SectionPtr cl_thSec = ((fCache->fSections)[section::type::CLICK][section::subtype::THROTTLE_CACHE]).sub_secs[0];
+                 cl_thSec->reset();
+             }
+             if(fConf.IsPccThrottle()) {
+-                SectionPtr pcc_thSec = fCache->getSection(section::type::PCC, section::subtype::THROTTLE_CACHE, 0);
++                SectionPtr pcc_thSec = ((fCache->fSections)[section::type::PCC][section::subtype::THROTTLE_CACHE]).sub_secs[0];
+                 pcc_thSec->reset();
+             }
+             if(fConf.IsPvcThrottle()) {
+-                SectionPtr pvc_thSec = fCache->getSection(section::type::PVC, section::subtype::THROTTLE_CACHE, 0);
++                SectionPtr pvc_thSec = ((fCache->fSections)[section::type::PVC][section::subtype::THROTTLE_CACHE]).sub_secs[0];
+                 pvc_thSec->reset();
+             }
+         }
+@@ -449,19 +445,17 @@
+         return 1.0;
+     }
+ 
+-    SubSecTypeVecPtrRef sections = fCache->getSection(section::type::CLICK,
+-            section::subtype::MODIFIER);
+-    if(!(sections)) {
++    SubSecTypeVecRef sections = (fCache->fSections)[section::type::CLICK][section::subtype::MODIFIER];
++    if(sections.no_subsecs == 0) {
+         return 1.0;
+     }
+-    int32_t siz = (*sections).size();
+ 
+     double mod = 1.0;
+     double prob_mod = 1.0;
+ 
+-    for(int32_t i = 0; i < siz; ++i) {
++    for(int32_t i = 0; i < sections.no_subsecs; ++i) {
+         mod = 1.0;
+-        if(((*sections)[i])->getValue(key, mod, stats, detail)) {
++        if(((sections.sub_secs)[i])->getValue(key, mod, stats, detail)) {
+             prob_mod *= mod;
+         }
+     }
+@@ -485,19 +479,17 @@
+         type = section::type::PCC;
+     }
+ 
+-    SubSecTypeVecPtrRef sections = fCache->getSection(type,
+-            section::subtype::MODIFIER);
+-    if(!(sections)) {
++    SubSecTypeVecRef sections = (fCache->fSections)[type][section::subtype::MODIFIER];
++    if(sections.no_subsecs == 0) {
+         return 1.0;
+     }
+-    int32_t siz = (*sections).size();
+ 
+     double mod = 1.0;
+     double prob_mod = 1.0;
+ 
+-    for(int32_t i = 0; i < siz; ++i) {
++    for(int32_t i = 0; i < sections.no_subsecs; ++i) {
+         mod = 1.0;
+-        if(((*sections)[i])->getValue(key, mod, stats, detail)) {
++        if(((sections.sub_secs)[i])->getValue(key, mod, stats, detail)) {
+             prob_mod *= mod;
+         }
+     }
