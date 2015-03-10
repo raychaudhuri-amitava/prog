@@ -30,4 +30,7 @@ main()
 		cout<<endl;
 	}        
 
+        vector<int> v1;
+        vector<int> v2{v1};
+
 }
