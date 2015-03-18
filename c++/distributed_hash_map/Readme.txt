@@ -76,5 +76,11 @@ key = jkl : value = 0987
 Now following is done:
 dh_map is the implementation of get() and put() api of the distributed hash. It uses sqlite DB (we can use any DB like mysql DB, mongo DB etc) to store the key value pair. A thread starts (every 1 hr) and reads the DB and populates a temporary map. When there is no read happening, it switches the pointer and swaps the new map to the old map and deletes the old map. 
 
+Use the following or greater c++ compiler:
+amitava@Marian-HP:~/amitava_data/prog/c++/distributed_hash_map$ g++ --version
+g++ (Ubuntu 4.8.2-19ubuntu1) 4.8.2
+Copyright (C) 2013 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 
