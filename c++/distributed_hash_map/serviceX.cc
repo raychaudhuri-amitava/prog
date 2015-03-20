@@ -25,6 +25,7 @@ using namespace std;
 void module1() {
     dh_map dm(true);
     while(true) {
+    cout<<endl;
     cout<<"key = abcd : value = "<<dm.get("abcd")<<endl;
     cout<<"key = def : value = "<<dm.get("def")<<endl;
     cout<<"key = ghi : value = "<<dm.get("ghi")<<endl;
@@ -36,6 +37,7 @@ void module1() {
 void module2() {
     dh_map dm(true);
     while(true) {
+    cout<<endl;
     cout<<"key = mno : value = "<<dm.get("mno")<<endl;
     cout<<"key = pqr : value = "<<dm.get("pqr")<<endl;
     cout<<"key = stu : value = "<<dm.get("stu")<<endl;
