@@ -1,0 +1,10 @@
+To compile:
+c++ -o josephus josephus.cc circular_node.cc circular_list.cc 
+
+To check use the folowing:
+for n in `seq 1 64`; do echo -n "$n : "; ./josephus $n 1; done
+
+J(2n) = 2*J(n) - 1 // for even
+J(2n + 1) = 2*J(n) + 1 // for odd
+
+
