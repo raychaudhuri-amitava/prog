@@ -15,7 +15,7 @@ con = sqlite3.connect('/home/amitava/mydata/stock_analysis/stock_details.db')
 cur = con.cursor()
 
 # Create table
-cur.execute("CREATE TABLE IF NOT EXISTS stock_details (dump_date text, symbol text, company text, lastprice real, dayLow real, dayHigh real)")
+cur.execute("CREATE TABLE IF NOT EXISTS stock_details (symbol text, company text, dump_date text, previousClose real, openPrice real, dayLow real, dayHigh real, lastprice real, closePrice real, averagePrice real, deliveryQuantity real, deliveryToTradedQuantity real, quantityTraded real, totalTradedValue real, totalTradedVolume real)")
 cur.execute("CREATE TABLE IF NOT EXISTS wrong_stocks (symbol text PRIMARY KEY, company text, reason text, dump_date text)")
 cur.execute("CREATE TABLE IF NOT EXISTS traded_stocks (symbol text PRIMARY KEY, company text)")
 con.commit()
@@ -33,7 +33,7 @@ for symb, comp in all_stock_codes.items() :
         if(nse.is_valid_code(symb)) :
             q = nse.get_quote(symb)
             if(q != None) :
-                cur.execute("INSERT INTO stock_details VALUES (?, ?, ?, ?, ?, ?)", (date.today(), symb, comp, q['lastPrice'], q['dayLow'], q['dayHigh']))
+                cur.execute("INSERT INTO stock_details VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (symb, comp, date.today, q['previousClose'], q['open'], q['dayLow'], q['dayHigh'], q['lastprice'],q['closePrice'], q['averagePrice'], q['deliveryQuantity'], q['deliveryToTradedQuantity'], q['quantityTraded'], q['totalTradedValue'], q['totalTradedVolume']))
             else :
                 cur.execute("INSERT INTO wrong_stocks VALUES (?, ?, ?, ?) ON CONFLICT (symbol) DO UPDATE SET company = excluded.company, dump_date = excluded.dump_date", (symb, comp, 'NoResponse', date.today()))
         else :
